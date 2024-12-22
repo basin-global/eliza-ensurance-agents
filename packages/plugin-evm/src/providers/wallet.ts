@@ -40,7 +40,6 @@ export class WalletProvider {
     getCurrentChain(): Chain {
         return this.chains[this.currentChain];
     }
-
     getPublicClient(
         chainName: SupportedChain
     ): PublicClient<HttpTransport, Chain, Account | undefined> {
@@ -170,11 +169,9 @@ export class WalletProvider {
     }
 }
 
-const genChainsFromRuntime = (
-    runtime: IAgentRuntime
-): Record<string, Chain> => {
-    const chainNames =
-        (runtime.character.settings.chains?.evm as SupportedChain[]) || [];
+const genChainsFromRuntime = (runtime: IAgentRuntime) => {
+    // Get chains from character settings
+    const chainNames = runtime.character.settings.chains?.evm || [];
     const chains = {};
 
     chainNames.forEach((chainName) => {
@@ -184,15 +181,6 @@ const genChainsFromRuntime = (
         const chain = WalletProvider.genChainFromName(chainName, rpcUrl);
         chains[chainName] = chain;
     });
-
-    const mainnet_rpcurl = runtime.getSetting("EVM_PROVIDER_URL");
-    if (mainnet_rpcurl) {
-        const chain = WalletProvider.genChainFromName(
-            "mainnet",
-            mainnet_rpcurl
-        );
-        chains["mainnet"] = chain;
-    }
 
     return chains;
 };
@@ -226,3 +214,4 @@ export const evmWalletProvider: Provider = {
         }
     },
 };
+
