@@ -1,49 +1,31 @@
-import { createWalletClient, http, type Address, Chain } from "viem";
+import { createWalletClient, createPublicClient, http, type Address } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
+import type { Chain } from "viem";
 import * as chains from "viem/chains";
 import type { WalletConfig } from "../types";
-import { formatUnits } from "viem";
+import type { IAgentRuntime } from "@elizaos/core";
+import type { TokenboundCharacter } from "../types";
 
 export class TokenboundWalletProvider {
     private account;
-    private tbaAddress: Address;
     private chain: Chain;
-    private supportedChains: Chain[];
+    private readonly tbaAddress: Address;
 
     constructor(private config: WalletConfig) {
         this.tbaAddress = config.tbaAddress as Address;
         this.chain = chains[config.chain];
-        this.supportedChains = config.supportedChains?.map(c => chains[c]) || [this.chain];
 
         if (config.type === 'eoa') {
-            this.account = privateKeyToAccount(config.privateKey as `0x${string}`);
+            this.account = privateKeyToAccount(config.privateKey);
         }
     }
 
-    getWalletClient(chainId?: number) {
-        const chain = chainId ?
-            this.supportedChains.find(c => c.id === chainId) :
-            this.chain;
-
-        if (!chain) throw new Error(`Chain ${chainId} not supported`);
-
+    getWalletClient() {
         return createWalletClient({
             account: this.account,
-            chain,
+            chain: this.chain,
             transport: http()
         });
-    }
-
-    async getNativeBalance(): Promise<string> {
-        const publicClient = this.getPublicClient();
-        const balance = await publicClient.getBalance({
-            address: this.tbaAddress  // Query TBA address directly
-        });
-        return formatUnits(balance, 18);
-    }
-
-    getChain(): Chain {
-        return this.chain;
     }
 
     getPublicClient() {
@@ -52,20 +34,33 @@ export class TokenboundWalletProvider {
             transport: http()
         });
     }
+
+    getAddress(): Address {
+        return this.tbaAddress;
+    }
+
+    getChain(): Chain {
+        return this.chain;
+    }
 }
 
-export function getWalletProvider(getSetting: (key: string) => string | undefined) {
-    const tbConfig = runtime.character.tokenbound;
+export function getWalletProvider(runtime: IAgentRuntime): TokenboundWalletProvider {
+    const character = runtime.character as TokenboundCharacter;
+    const tbConfig = character.tokenbound;
     if (!tbConfig?.address) throw new Error("Tokenbound address not configured");
 
-    const key = getSetting(tbConfig.owner?.key);
+    const key = runtime.getSetting(tbConfig.owner?.key ?? '');
     if (!key) throw new Error("Tokenbound key not configured");
+
+    const formattedKey = tbConfig.owner?.type === 'eoa'
+        ? (key.startsWith('0x') ? key : `0x${key}`)
+        : key;
 
     const config: WalletConfig = {
         type: tbConfig.owner?.type || "eoa",
         tbaAddress: tbConfig.address,
-        privateKey: tbConfig.owner?.type === 'eoa' ? key as `0x${string}` : undefined,
-        apiKey: tbConfig.owner?.type !== 'eoa' ? key : undefined,
+        privateKey: formattedKey as `0x${string}`,
+        apiKey: tbConfig.owner?.type !== 'eoa' ? formattedKey : undefined,
         chain: tbConfig.chain || "base"
     };
 

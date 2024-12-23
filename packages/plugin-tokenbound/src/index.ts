@@ -1,24 +1,18 @@
-import type { Plugin } from "@ai16z/eliza";
+import { Plugin } from "@elizaos/core";
 import { transferETHAction } from "./actions/transferETH";
 import { transferERC20Action } from "./actions/transferERC20";
-import { tokenboundProvider } from "./providers/provider";
-import { signMessageAction } from "./actions/signMessage";
 import { getBalanceAction } from "./actions/getBalance";
+import { tokenboundProvider } from "./providers/provider";
 
-async function createTokenboundPlugin(
-    getSetting: (key: string) => string | undefined
-): Promise<Plugin> {
-    return {
-        name: "Tokenbound",
-        description: "TBA interactions plugin",
-        providers: [tokenboundProvider],
-        actions: [
-            transferETHAction,
-            transferERC20Action,
-            signMessageAction,
-            getBalanceAction
-        ]
-    };
-}
+export const tokenboundPlugin: Plugin = {
+    name: "tokenbound",
+    description: "TBA interactions plugin",
+    actions: [
+        transferETHAction,
+        transferERC20Action,
+        getBalanceAction
+    ],
+    providers: [tokenboundProvider]
+};
 
-export default createTokenboundPlugin;
+export default tokenboundPlugin;

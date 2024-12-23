@@ -1,6 +1,8 @@
-import { parseUnits } from "viem";
+import { parseUnits, encodeFunctionData, type Address } from "viem";
 import type { TokenboundWalletProvider } from "../providers/wallet";
+import { getWalletProvider } from "../providers/wallet";
 import type { Transaction, TransferERC20Params } from "../types";
+import type { IAgentRuntime } from "@elizaos/core";
 
 export class TransferERC20Action {
     constructor(private walletProvider: TokenboundWalletProvider) {}
@@ -26,12 +28,20 @@ export class TransferERC20Action {
                 to: params.erc20tokenAddress,
                 value: 0n,
                 data,
-                chain: params.chainId ? undefined : undefined // Will add cross-chain support later
+                chain: this.walletProvider.getChain(),
+                kzg: {
+                    blobToKzgCommitment: function(blob: Uint8Array): Uint8Array {
+                        throw new Error("Function not implemented.");
+                    },
+                    computeBlobKzgProof: function(blob: Uint8Array, commitment: Uint8Array): Uint8Array {
+                        throw new Error("Function not implemented.");
+                    }
+                }
             });
 
             return {
                 hash,
-                from: params.account,
+                from: this.walletProvider.getAddress(),
                 to: params.erc20tokenAddress,
                 value: 0n,
                 data,
@@ -64,30 +74,26 @@ function encodeERC20TransferData(to: Address, value: bigint): `0x${string}` {
 export const transferERC20Action = {
     name: "TBA_TRANSFER_ERC20",
     description: "Transfer ERC20 tokens from TBA",
-    handler: async (runtime, message, state, options) => {
-        const walletProvider = getWalletProvider(runtime.getSetting);
+    handler: async (runtime: IAgentRuntime, message, state, options) => {
+        const walletProvider = getWalletProvider(runtime);
         const action = new TransferERC20Action(walletProvider);
         return action.transfer(options);
     },
-    template: `Given the recent messages, extract:
-    - Token address
-    - Token decimals (1-18)
-    - Amount in decimal form (e.g. 0.1 USDC)
-    - Recipient address
-    - Chain ID (optional)
-
-    Respond with JSON:
-    {
-        "account": "<tba_address>",
-        "amount": number,
-        "recipientAddress": string,
-        "erc20tokenAddress": string,
-        "erc20tokenDecimals": number,
-        "chainId": number | null
-    }`,
     validate: async (runtime) => {
-        const tbaAddress = runtime.getSetting("TBA_ADDRESS");
-        const privateKey = runtime.getSetting("TBA_PRIVATE_KEY");
-        return !!(tbaAddress && privateKey);
-    }
+        const tbConfig = runtime.character.tokenbound;
+        if (!tbConfig?.address) return false;
+        const key = runtime.getSetting(tbConfig.owner?.key ?? '');
+        return !!(key);
+    },
+    similes: ["SEND_TOKEN", "TOKEN_TRANSFER", "TRANSFER_TOKEN"],
+    examples: [
+        [
+            {
+                user: "user",
+                content: {
+                    text: "Send 10 USDC to 0x742d35Cc6634C0532925a3b844Bc454e4438f44e"
+                }
+            }
+        ]
+    ]
 };
