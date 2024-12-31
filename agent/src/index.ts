@@ -17,7 +17,6 @@ import {
     elizaLogger,
     FsCacheAdapter,
     IAgentRuntime,
-    ICacheManager,
     IDatabaseAdapter,
     IDatabaseCacheAdapter,
     ModelProviderName,
@@ -50,10 +49,12 @@ import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import yargs from "yargs";
-import { tokenboundPlugin } from "@elizaos/plugin-tokenbound";
+// import { tokenboundPlugin } from "@elizaos/plugin-tokenbound";
 
 const __filename = fileURLToPath(import.meta.url); // get the resolved path to the file
 const __dirname = path.dirname(__filename); // get the name of the directory
+
+elizaLogger.verbose = true;
 
 export const wait = (minTime: number = 1000, maxTime: number = 3000) => {
     const waitTime =
@@ -352,11 +353,8 @@ export async function initializeClients(
     character: Character,
     runtime: IAgentRuntime
 ) {
-    // each client can only register once
-    // and if we want two we can explicitly support it
     const clients: Record<string, any> = {};
-    const clientTypes: string[] =
-        character.clients?.map((str) => str.toLowerCase()) || [];
+    const clientTypes: string[] = character.clients?.map((str) => str.toLowerCase()) || [];
     elizaLogger.log("initializeClients", clientTypes, "for", character.name);
 
     if (clientTypes.includes(Clients.DIRECT)) {
@@ -370,8 +368,27 @@ export async function initializeClients(
     }
 
     if (clientTypes.includes(Clients.TELEGRAM)) {
-        const telegramClient = await TelegramClientInterface.start(runtime);
-        if (telegramClient) clients.telegram = telegramClient;
+        try {
+            elizaLogger.debug("Starting Telegram client with config:", {
+                characterName: character.name,
+                characterId: character.id,
+                hasTelegramToken: !!getSecret(character, "TELEGRAM_BOT_TOKEN")
+            });
+
+            const telegramClient = await TelegramClientInterface.start(runtime);
+            if (telegramClient) {
+                clients.telegram = telegramClient;
+                elizaLogger.debug("Telegram client initialized successfully");
+            } else {
+                elizaLogger.error("Telegram client initialization returned null");
+            }
+        } catch (error) {
+            elizaLogger.error("Error initializing Telegram client:", {
+                error: error.message,
+                stack: error.stack,
+                characterName: character.name
+            });
+        }
     }
 
     if (clientTypes.includes(Clients.TWITTER)) {
@@ -414,8 +431,8 @@ export async function initializeClients(
             if (plugin.clients) {
                 for (const client of plugin.clients) {
                     const startedClient = await client.start(runtime);
-                    const clientId = client.id || client.name || `client_${Math.random()}`;
-                    clients[clientId] = startedClient;
+                    const clientKey = (client as any).name || `plugin_client_${Object.keys(clients).length}`;
+                    clients[clientKey] = startedClient;
                 }
             }
         }
@@ -425,27 +442,11 @@ export async function initializeClients(
 }
 
 function isFalsish(input: any): boolean {
-    // If the input is exactly NaN, return true
     if (Number.isNaN(input)) {
         return true;
     }
-
-    // Convert input to a string if it's not null or undefined
     const value = input == null ? "" : String(input);
-
-    // List of common falsish string representations
-    const falsishValues = [
-        "false",
-        "0",
-        "no",
-        "n",
-        "off",
-        "null",
-        "undefined",
-        "",
-    ];
-
-    // Check if the value (trimmed and lowercased) is in the falsish list
+    const falsishValues = ["false", "0", "no", "n", "off", "null", "undefined", ""];
     return falsishValues.includes(value.trim().toLowerCase());
 }
 
@@ -458,7 +459,7 @@ let nodePlugin: any | undefined;
 export async function createAgent(
     character: Character,
     db: IDatabaseAdapter,
-    cache: ICacheManager,
+    cache: CacheManager,
     token: string
 ): Promise<AgentRuntime> {
     elizaLogger.success(
@@ -532,7 +533,7 @@ export async function createAgent(
             getSecret(character, "TON_PRIVATE_KEY") ? tonPlugin : null,
             getSecret(character, "SUI_PRIVATE_KEY") ? suiPlugin : null,
             getSecret(character, "STORY_PRIVATE_KEY") ? storyPlugin : null,
-            getSecret(character, "TOKENBOUND_KEY") ? tokenboundPlugin : null,
+            // getSecret(character, "TOKENBOUND_KEY") ? tokenboundPlugin : null,
         ].filter(Boolean),
         providers: [],
         actions: [],

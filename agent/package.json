@@ -39,7 +39,6 @@
     "@elizaos/plugin-image-generation": "workspace:*",
     "@elizaos/plugin-nft-generation": "workspace:*",
     "@elizaos/plugin-node": "workspace:*",
-    "@elizaos/plugin-tokenbound": "workspace:*",
     "@elizaos/plugin-solana": "workspace:*",
     "@elizaos/plugin-starknet": "workspace:*",
     "@elizaos/plugin-ton": "workspace:*",

@@ -1,15 +1,17 @@
 import { type TokenboundWalletProvider } from "../providers/wallet";
 import { getWalletProvider } from "../providers/wallet";
-import { type SignableMessage, toHex } from "viem";
-import type { SignMessageParams } from "../types";
+import { type SignableMessage, toHex, type WalletClient } from "viem";
+import type { SignMessageParams, TokenboundCharacter } from "../types";
+import { type Action } from "@elizaos/core";
 
 export class SignMessageAction {
     constructor(private walletProvider: TokenboundWalletProvider) {}
 
     async sign(params: SignMessageParams): Promise<`0x${string}`> {
-        const walletClient = this.walletProvider.getWalletClient();
-
         try {
+            const client = await this.walletProvider.getWalletClient();
+            const walletClient = client as WalletClient;
+
             let message: SignableMessage;
             if (typeof params.message === 'string') {
                 message = params.message;
@@ -25,24 +27,57 @@ export class SignMessageAction {
             });
 
             return signature;
-        } catch (error) {
+        } catch (err) {
+            const error = err instanceof Error ? err : new Error(String(err));
             throw new Error(`Message signing failed: ${error.message}`);
         }
     }
 }
 
-export const signMessageAction = {
+export const signMessageAction: Action = {
     name: "TBA_SIGN_MESSAGE",
-    description: "Sign message with TBA",
-    handler: async (runtime, message, state, options) => {
-        const walletProvider = getWalletProvider(runtime);
-        const action = new SignMessageAction(walletProvider);
-        return action.sign(options);
+    description: "Sign a message with the Tokenbound Account",
+    handler: async (runtime, message, state, options, callback) => {
+        try {
+            if (!options?.message) {
+                throw new Error("MESSAGE_MISSING");
+            }
+
+            const walletProvider = getWalletProvider(runtime);
+            const action = new SignMessageAction(walletProvider);
+            const signature = await action.sign(options);
+
+            if (callback) {
+                callback({
+                    text: `Message signed successfully. Signature: ${signature}`,
+                    content: {
+                        success: true,
+                        signature,
+                        message: options.message
+                    }
+                });
+            }
+            return true;
+        } catch (err) {
+            const error = err instanceof Error ? err : new Error(String(err));
+            console.error('Message signing failed:', error);
+
+            if (callback) {
+                callback({
+                    text: `Failed to sign message: ${error.message}`,
+                    content: {
+                        error: error.message,
+                        success: false
+                    }
+                });
+            }
+            return false;
+        }
     },
     validate: async (runtime) => {
-        const tbaAddress = runtime.getSetting("TBA_ADDRESS");
-        const privateKey = runtime.getSetting("TBA_PRIVATE_KEY");
-        return !!(tbaAddress && privateKey);
+        const character = runtime.character as TokenboundCharacter;
+        const tbConfig = character.tokenbound;
+        return !!(tbConfig?.address && tbConfig?.owner?.key);
     },
     similes: ["SIGN", "SIGN_MESSAGE", "MESSAGE_SIGN"],
     examples: [
@@ -51,6 +86,13 @@ export const signMessageAction = {
                 user: "user",
                 content: {
                     text: "Sign this message: Hello World"
+                }
+            },
+            {
+                user: "agent",
+                content: {
+                    text: "Message signed successfully. Signature: 0x...",
+                    action: "TBA_SIGN_MESSAGE"
                 }
             }
         ]
