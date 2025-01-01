@@ -39,8 +39,8 @@ importers:
         specifier: 9.14.4
         version: 9.14.4
       sharp:
-        specifier: 0.33.5
-        version: 0.33.5
+        specifier: 0.32.6
+        version: 0.32.6
       tslog:
         specifier: 4.9.3
         version: 4.9.3
@@ -82,7 +82,7 @@ importers:
         specifier: 3.4.1
         version: 3.4.1
       turbo:
-        specifier: 2.3.3
+        specifier: latest
         version: 2.3.3
       typedoc:
         specifier: 0.26.11
