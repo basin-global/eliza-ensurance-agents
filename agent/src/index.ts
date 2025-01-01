@@ -1,10 +1,6 @@
 import { PostgresDatabaseAdapter } from "@elizaos/adapter-postgres";
-import { SqliteDatabaseAdapter } from "@elizaos/adapter-sqlite";
 import { AutoClientInterface } from "@elizaos/client-auto";
-import { DiscordClientInterface } from "@elizaos/client-discord";
 import { FarcasterAgentClient } from "@elizaos/client-farcaster";
-import { LensAgentClient } from "@elizaos/client-lens";
-import { SlackClientInterface } from "@elizaos/client-slack";
 import { TelegramClientInterface } from "@elizaos/client-telegram";
 import { TwitterClientInterface } from "@elizaos/client-twitter";
 import {
@@ -39,12 +35,10 @@ import { multiversxPlugin } from "@elizaos/plugin-multiversx";
 import { nearPlugin } from "@elizaos/plugin-near";
 import { nftGenerationPlugin } from "@elizaos/plugin-nft-generation";
 import { createNodePlugin } from "@elizaos/plugin-node";
-import { solanaPlugin } from "@elizaos/plugin-solana";
 import { suiPlugin } from "@elizaos/plugin-sui";
 import { TEEMode, teePlugin } from "@elizaos/plugin-tee";
 import { tonPlugin } from "@elizaos/plugin-ton";
 import { zksyncEraPlugin } from "@elizaos/plugin-zksync-era";
-import Database from "better-sqlite3";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -320,31 +314,31 @@ export function getTokenForProvider(
 }
 
 function initializeDatabase(dataDir: string) {
-    if (process.env.POSTGRES_URL) {
+    if (process.env.DATABASE_URL) {
         elizaLogger.info("Initializing PostgreSQL connection...");
         const db = new PostgresDatabaseAdapter({
-            connectionString: process.env.POSTGRES_URL,
+            connectionString: process.env.DATABASE_URL,
             parseInputs: true,
+            ssl: {
+                rejectUnauthorized: true,
+                // Render requires TLS 1.2 or higher
+                minVersion: 'TLSv1.2'
+            }
         });
 
         // Test the connection
         db.init()
             .then(() => {
-                elizaLogger.success(
-                    "Successfully connected to PostgreSQL database"
-                );
+                elizaLogger.success("Successfully connected to PostgreSQL database");
             })
             .catch((error) => {
                 elizaLogger.error("Failed to connect to PostgreSQL:", error);
+                process.exit(1);
             });
 
         return db;
     } else {
-        const filePath =
-            process.env.SQLITE_FILE ?? path.resolve(dataDir, "db.sqlite");
-        // ":memory:";
-        const db = new SqliteDatabaseAdapter(new Database(filePath));
-        return db;
+        throw new Error("Database connection not configured. Please set DATABASE_URL environment variable.");
     }
 }
 
@@ -360,11 +354,6 @@ export async function initializeClients(
     if (clientTypes.includes(Clients.DIRECT)) {
         const autoClient = await AutoClientInterface.start(runtime);
         if (autoClient) clients.auto = autoClient;
-    }
-
-    if (clientTypes.includes(Clients.DISCORD)) {
-        const discordClient = await DiscordClientInterface.start(runtime);
-        if (discordClient) clients.discord = discordClient;
     }
 
     if (clientTypes.includes(Clients.TELEGRAM)) {
@@ -403,28 +392,14 @@ export async function initializeClients(
     }
 
     if (clientTypes.includes(Clients.FARCASTER)) {
-        // why is this one different :(
         const farcasterClient = new FarcasterAgentClient(runtime);
         if (farcasterClient) {
             farcasterClient.start();
             clients.farcaster = farcasterClient;
         }
     }
-    if (clientTypes.includes("lens")) {
-        const lensClient = new LensAgentClient(runtime);
-        lensClient.start();
-        clients.lens = lensClient;
-    }
 
     elizaLogger.log("client keys", Object.keys(clients));
-
-    // TODO: Add Slack client to the list
-    // Initialize clients as an object
-
-    if (clientTypes.includes("slack")) {
-        const slackClient = await SlackClientInterface.start(runtime);
-        if (slackClient) clients.slack = slackClient; // Use object property instead of push
-    }
 
     if (character.plugins?.length > 0) {
         for (const plugin of character.plugins) {
@@ -493,25 +468,10 @@ export async function createAgent(
                 ? confluxPlugin
                 : null,
             nodePlugin,
-            getSecret(character, "SOLANA_PUBLIC_KEY") ||
-            (getSecret(character, "WALLET_PUBLIC_KEY") &&
-                !getSecret(character, "WALLET_PUBLIC_KEY")?.startsWith("0x"))
-                ? solanaPlugin
-                : null,
             (getSecret(character, "NEAR_ADDRESS") ||
                 getSecret(character, "NEAR_WALLET_PUBLIC_KEY")) &&
             getSecret(character, "NEAR_WALLET_SECRET_KEY")
                 ? nearPlugin
-                : null,
-            (getSecret(character, "SOLANA_PUBLIC_KEY") ||
-                (getSecret(character, "WALLET_PUBLIC_KEY") &&
-                    !getSecret(character, "WALLET_PUBLIC_KEY")?.startsWith(
-                        "0x"
-                    ))) &&
-            getSecret(character, "SOLANA_ADMIN_PUBLIC_KEY") &&
-            getSecret(character, "SOLANA_PRIVATE_KEY") &&
-            getSecret(character, "SOLANA_ADMIN_PRIVATE_KEY")
-                ? nftGenerationPlugin
                 : null,
             getSecret(character, "ZEROG_PRIVATE_KEY") ? zgPlugin : null,
             getSecret(character, "FAL_API_KEY") ||
@@ -521,7 +481,7 @@ export async function createAgent(
                 ? imageGenerationPlugin
                 : null,
             ...(teeMode !== TEEMode.OFF && walletSecretSalt
-                ? [teePlugin, solanaPlugin]
+                ? [teePlugin]
                 : []),
             getSecret(character, "FLOW_ADDRESS") &&
             getSecret(character, "FLOW_PRIVATE_KEY")
