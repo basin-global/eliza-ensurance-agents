@@ -59,7 +59,7 @@ export class FarcasterPostManager {
 
             const { timeline } = await this.client.getTimeline({
                 fid,
-                pageSize: 10,
+                pageSize: 5,
             });
 
             this.cache.set("farcaster/timeline", timeline);

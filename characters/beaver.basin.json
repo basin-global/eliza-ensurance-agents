@@ -10,6 +10,9 @@
         },
         "voice": {
             "model": "en_US-male-medium"
+        },
+        "runtime": {
+            "conversationLength": 20
         }
     },
     "tokenbound": {
