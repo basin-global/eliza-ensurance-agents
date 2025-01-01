@@ -183,9 +183,6 @@ importers:
       '@elizaos/plugin-tee':
         specifier: workspace:*
         version: link:../packages/plugin-tee
-      '@elizaos/plugin-tokenbound':
-        specifier: workspace:*
-        version: link:../packages/plugin-tokenbound
       '@elizaos/plugin-ton':
         specifier: workspace:*
         version: link:../packages/plugin-ton
