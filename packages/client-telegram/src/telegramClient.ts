@@ -163,7 +163,7 @@ export class TelegramClient {
 
         this.bot.catch((err, ctx) => {
             elizaLogger.error(`❌ Telegram Error for ${ctx.updateType}:`, err);
-            ctx.reply("An unexpected error occurred. Please try again later.");
+            ctx.reply("Hang tight! brb");
         });
     }
 
