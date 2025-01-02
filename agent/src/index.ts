@@ -21,15 +21,10 @@ import {
     validateCharacterConfig,
     CacheStore,
 } from "@elizaos/core";
-import { zgPlugin } from "@elizaos/plugin-0g";
 import { bootstrapPlugin } from "@elizaos/plugin-bootstrap";
-// import { intifacePlugin } from "@elizaos/plugin-intiface";
 import { DirectClient } from "@elizaos/client-direct";
 import { imageGenerationPlugin } from "@elizaos/plugin-image-generation";
-import { multiversxPlugin } from "@elizaos/plugin-multiversx";
-import { nftGenerationPlugin } from "@elizaos/plugin-nft-generation";
 import { createNodePlugin } from "@elizaos/plugin-node";
-import { TEEMode, teePlugin } from "@elizaos/plugin-tee";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -437,16 +432,13 @@ export async function createAgent(
 
     nodePlugin ??= createNodePlugin();
 
-    const teeMode = getSecret(character, "TEE_MODE") || "OFF";
-    const walletSecretSalt = getSecret(character, "WALLET_SECRET_SALT");
-
-    // Validate TEE configuration
-    if (teeMode !== TEEMode.OFF && !walletSecretSalt) {
-        elizaLogger.error(
-            "WALLET_SECRET_SALT required when TEE_MODE is enabled"
-        );
-        throw new Error("Invalid TEE configuration");
-    }
+    // Add debug logging
+    elizaLogger.debug("Node plugin services:", {
+        services: nodePlugin.services.map(s => ({
+            name: s.constructor.name,
+            type: s.constructor.serviceType
+        }))
+    });
 
     return new AgentRuntime({
         databaseAdapter: db,
@@ -457,18 +449,13 @@ export async function createAgent(
         plugins: [
             bootstrapPlugin,
             nodePlugin,
-            getSecret(character, "ZEROG_PRIVATE_KEY") ? zgPlugin : null,
             getSecret(character, "FAL_API_KEY") ||
             getSecret(character, "OPENAI_API_KEY") ||
             getSecret(character, "VENICE_API_KEY") ||
             getSecret(character, "HEURIST_API_KEY")
                 ? imageGenerationPlugin
                 : null,
-            ...(teeMode !== TEEMode.OFF && walletSecretSalt
-                ? [teePlugin]
-                : []),
-            getSecret(character, "MVX_PRIVATE_KEY") ? multiversxPlugin : null,
-            // getSecret(character, "TOKENBOUND_KEY") ? tokenboundPlugin : null,
+                // getSecret(character, "TOKENBOUND_KEY") ? tokenboundPlugin : null,
             webSearchPlugin,
         ].filter(Boolean),
         providers: [],

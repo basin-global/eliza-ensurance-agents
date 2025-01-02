@@ -45,8 +45,9 @@ async function getVoiceSettings(runtime: IAgentRuntime) {
     elizaLogger.debug("Voice settings:", {
         hasElevenLabs,
         useVits,
-        voiceSettings,
-        elevenlabsSettings,
+        voiceSettings: JSON.stringify(voiceSettings),
+        elevenlabsSettings: JSON.stringify(elevenlabsSettings),
+        apiKey: !!runtime.getSetting("ELEVENLABS_XI_API_KEY")
     });
 
     return {

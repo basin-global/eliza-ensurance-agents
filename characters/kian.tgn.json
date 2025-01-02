@@ -5,7 +5,7 @@
       "direct",
       "telegram"
     ],
-    "modelProvider": "anthropic",
+    "modelProvider": "openai",
     "settings": {
       "secrets": {
         "TELEGRAM_BOT_TOKEN": "7551951840:AAEWlg2P_Mp43uDFfn5s_EYWCi8ItUq5nJ8"

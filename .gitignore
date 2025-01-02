@@ -16,6 +16,14 @@ packages/plugin-zksync-era
 packages/plugin-flow
 packages/plugin-aptos
 packages/plugin-conflux
+packages/plugin-trustdb
+packages/plugin-0g
+packages/plugin-intiface
+packages/plugin-multiversx
+packages/plugin-intiface
+packages/plugin-tee
+packages/plugin-icp
+packages/adapter-sqljs
 
 node_modules
 /out

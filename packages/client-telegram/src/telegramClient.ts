@@ -1,6 +1,13 @@
 import { Context, Telegraf } from "telegraf";
 import { message } from "telegraf/filters";
-import { IAgentRuntime, elizaLogger } from "@elizaos/core";
+import { Update } from "telegraf/types";
+import { Message } from "@telegraf/types";
+import {
+    IAgentRuntime,
+    elizaLogger,
+    ServiceType,
+    ITranscriptionService
+} from "@elizaos/core";
 import { MessageManager } from "./messageManager.ts";
 import { getOrCreateRecommenderInBe } from "./getOrCreateRecommenderInBe.ts";
 
@@ -81,6 +88,53 @@ export class TelegramClient {
     private setupMessageHandlers(): void {
         elizaLogger.log("Setting up message handler...");
 
+        this.bot.on(message('voice'), async (ctx) => {
+            elizaLogger.debug("Voice message received:", {
+                messageId: ctx.message.message_id,
+                from: ctx.from?.username,
+                voice: ctx.message.voice
+            });
+
+            try {
+                const fileLink = await ctx.telegram.getFileLink(ctx.message.voice.file_id);
+                const response = await fetch(fileLink);
+                const audioBuffer = await response.arrayBuffer();
+
+                const transcriptionService = this.runtime.getService(ServiceType.TRANSCRIPTION) as ITranscriptionService;
+                if (!transcriptionService) {
+                    elizaLogger.error("Transcription service not available");
+                    return;
+                }
+
+                const transcription = await transcriptionService.transcribe(audioBuffer);
+                if (transcription) {
+                    const newCtx = {
+                        ...ctx,
+                        message: {
+                            ...ctx.message,
+                            text: transcription,
+                            voice: undefined
+                        }
+                    };
+
+                    await this.messageManager.handleMessage(newCtx as unknown as Context<Update>);
+                }
+            } catch (error) {
+                elizaLogger.error("Error processing voice message:", error);
+            }
+        });
+
+        this.bot.on(message('text'), async (ctx) => {
+            try {
+                if (!await this.isGroupAuthorized(ctx)) {
+                    return;
+                }
+                await this.messageManager.handleMessage(ctx);
+            } catch (error) {
+                elizaLogger.error("Error handling text message:", error);
+            }
+        });
+
         this.bot.on(message("new_chat_members"), async (ctx) => {
             try {
                 const newMembers = ctx.message.new_chat_members;
@@ -93,57 +147,6 @@ export class TelegramClient {
                 }
             } catch (error) {
                 elizaLogger.error("Error handling new chat members:", error);
-            }
-        });
-
-        this.bot.on("message", async (ctx) => {
-            try {
-                // Check group authorization first
-                if (!(await this.isGroupAuthorized(ctx))) {
-                    return;
-                }
-
-                if (this.tgTrader) {
-                    const userId = ctx.from?.id.toString();
-                    const username =
-                        ctx.from?.username || ctx.from?.first_name || "Unknown";
-                    if (!userId) {
-                        elizaLogger.warn(
-                            "Received message from a user without an ID."
-                        );
-                        return;
-                    }
-                    try {
-                        await getOrCreateRecommenderInBe(
-                            userId,
-                            username,
-                            this.backendToken,
-                            this.backend
-                        );
-                    } catch (error) {
-                        elizaLogger.error(
-                            "Error getting or creating recommender in backend",
-                            error
-                        );
-                    }
-                }
-
-                await this.messageManager.handleMessage(ctx);
-            } catch (error) {
-                elizaLogger.error("❌ Error handling message:", error);
-                // Don't try to reply if we've left the group or been kicked
-                if (error?.response?.error_code !== 403) {
-                    try {
-                        await ctx.reply(
-                            "An error occurred while processing your message."
-                        );
-                    } catch (replyError) {
-                        elizaLogger.error(
-                            "Failed to send error message:",
-                            replyError
-                        );
-                    }
-                }
             }
         });
 
