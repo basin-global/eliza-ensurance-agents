@@ -6,18 +6,10 @@
       "telegram",
       "discord"
     ],
-    "modelProvider": "anthropic",
+    "modelProvider": "groq",
     "settings": {
       "secrets": {
         "TELEGRAM_BOT_TOKEN": "7551951840:AAEWlg2P_Mp43uDFfn5s_EYWCi8ItUq5nJ8"
-      },
-      "voice": {
-        "elevenlabs": {
-          "voiceId": "SOYHLrjzK2X1ezoPC6cr",
-          "model": "eleven_monolingual_v1",
-          "stability": "0.3",
-          "similarityBoost": "0.85"
-        }
       },
       "runtime": {
         "conversationLength": 20
@@ -195,15 +187,7 @@
             "shouldIgnoreBotMessages": false,
             "shouldRespondOnlyToMentions": false,
             "shouldIgnoreDirectMessages": true,
-            "messageSimilarityThreshold": 0.3,
-            "responseDelay": {
-                "min": 100,
-                "max": 500
-            },
-            "voice": {
-                "threshold": 0.2,
-                "silenceThreshold": 200
-            }
+            "messageSimilarityThreshold": 0.2
         }
     }
   }

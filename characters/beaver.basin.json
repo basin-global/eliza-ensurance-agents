@@ -1,7 +1,7 @@
 {
     "name": "beaver.basin",
     "id": "d8741480-fe70-46f2-bcb3-ef205f823882",
-    "clients": ["direct", "telegram"],
+    "clients": ["direct", "telegram", "twitter"],
     "modelProvider": "anthropic",
     "settings": {
         "secrets": {
