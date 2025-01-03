@@ -1,4 +1,6 @@
-import { PassThrough, Readable } from "stream";
+import { PassThrough } from "stream";
+import { Readable } from "node:stream";
+import { ReadableStream } from "node:stream/web";
 import { IAgentRuntime, ISpeechService, ServiceType } from "@elizaos/core";
 import { getWavHeader } from "./audioUtils.ts";
 import { Service } from "@elizaos/core";
@@ -45,9 +47,8 @@ async function getVoiceSettings(runtime: IAgentRuntime) {
     elizaLogger.debug("Voice settings:", {
         hasElevenLabs,
         useVits,
-        voiceSettings: JSON.stringify(voiceSettings),
-        elevenlabsSettings: JSON.stringify(elevenlabsSettings),
-        apiKey: !!runtime.getSetting("ELEVENLABS_XI_API_KEY")
+        voiceSettings,
+        elevenlabsSettings,
     });
 
     return {
@@ -124,17 +125,20 @@ async function textToSpeech(runtime: IAgentRuntime, text: string) {
         }
 
         if (response) {
-            const reader = response.body?.getReader();
+            const webStream = ReadableStream.from(
+                response.body as ReadableStream
+            );
+            const reader = webStream.getReader();
+
             const readable = new Readable({
                 read() {
-                    reader && // eslint-disable-line
-                        reader.read().then(({ done, value }) => {
-                            if (done) {
-                                this.push(null);
-                            } else {
-                                this.push(value);
-                            }
-                        });
+                    reader.read().then(({ done, value }) => {
+                        if (done) {
+                            this.push(null);
+                        } else {
+                            this.push(value);
+                        }
+                    });
                 },
             });
 

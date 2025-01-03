@@ -173,28 +173,16 @@ export class TranscriptionService
     }
 
     public async transcribe(audioBuffer: ArrayBuffer): Promise<string | null> {
-        elizaLogger.debug("TranscriptionService.transcribe called with buffer size:", audioBuffer.byteLength);
-
-        try {
-            // Try OpenAI first
-            if (this.runtime.getSetting("OPENAI_API_KEY")) {
-                elizaLogger.debug("Attempting OpenAI transcription...");
-                const result = await this.transcribeWithOpenAI(audioBuffer);
-                if (result) {
-                    elizaLogger.debug("OpenAI transcription successful:", result);
-                    return result;
-                }
-            }
-
-            // Fallback to local transcription
-            elizaLogger.debug("Attempting local transcription...");
-            const result = await this.transcribeLocally(audioBuffer);
-            elizaLogger.debug("Local transcription result:", result);
-            return result;
-        } catch (error) {
-            elizaLogger.error("Transcription error:", error);
+        // if the audio buffer is less than .2 seconds, just return null
+        if (audioBuffer.byteLength < 0.2 * 16000) {
             return null;
         }
+        return new Promise((resolve) => {
+            this.queue.push({ audioBuffer, resolve });
+            if (!this.processing) {
+                this.processQueue();
+            }
+        });
     }
 
     public async transcribeAttachmentLocally(
