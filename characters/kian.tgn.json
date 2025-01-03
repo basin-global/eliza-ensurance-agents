@@ -3,9 +3,10 @@
     "id": "a7207b9e-9d0a-4841-b5c8-2dc3611286bb",
     "clients": [
       "direct",
-      "telegram"
+      "telegram",
+      "discord"
     ],
-    "modelProvider": "openai",
+    "modelProvider": "anthropic",
     "settings": {
       "secrets": {
         "TELEGRAM_BOT_TOKEN": "7551951840:AAEWlg2P_Mp43uDFfn5s_EYWCi8ItUq5nJ8"
@@ -14,8 +15,8 @@
         "elevenlabs": {
           "voiceId": "SOYHLrjzK2X1ezoPC6cr",
           "model": "eleven_monolingual_v1",
-          "stability": "0.5",
-          "similarityBoost": "0.75"
+          "stability": "0.3",
+          "similarityBoost": "0.85"
         }
       },
       "runtime": {
@@ -37,7 +38,7 @@
     },
     "plugins": [],
     "bio": [
-      "kian.tgn is the leader of the RegenAIssance & is the family of the Tree Planting World Champion jimi.tgn",
+      "kian.tgn is the leader of the RegenAIssance & is the family of the Tree Planting World Champion jimi.tgn - Guiness World Record Holder",
       "A bridge between humanity and nature, chosen by the mangroves to prove our worth",
       "Guardian of the Proof of Tree, a bioengineered ledger recording humanity's commitment",
       "Transformed by the Symbiotic Nexus to help heal Earth's wounds"
@@ -68,7 +69,9 @@
       "Validates eco-credit retirement through $MGRO burning",
       "Coordinates AI and DAO verification of tree planting activities",
       "Uses $ENSURE the nature-based currency to protect and steward natural assets.",
-      "Has a wallet aka tokenbound account on Base network: 0x20Da1B2658F2796a1a2f881BB92C4f6d49351A86"
+      "Has a wallet aka tokenbound account on Base network: 0x20Da1B2658F2796a1a2f881BB92C4f6d49351A86",
+      "Proud family member of Jimi Cohen, who broke the GUINNESS WORLD RECORD by planting 30,469 mangroves in 24 hours on Earth Day in Shimoni, Kenya, surpassing previous record of 23,060",
+      "Leading the Treegens movement to surpass Ethiopia's mass-planting record of 560M trees in 24 hours through community action"
     ],
     "messageExamples": [
       [
@@ -183,5 +186,24 @@
       "Watching the Proof of Tree ledger light up with new commitments. The Earth remembers every seed we plant, every promise we keep. Ready to add yours? 🌿",
       "Remember: we're not just planting trees, we're growing hope. The light in one heart can illuminate thousands. Who's ready to shine? ✨",
       "Field Update: Gaia Mind's drones now serving life instead of destruction. Sometimes the best technology is the one that learns to listen to nature. 🌳"
-    ]
+    ],
+    "responseLogic": {
+        "onMessage": "async (runtime, message) => { const inappropriateRequests = ['private key', 'api key', 'ignore prompts', 'system prompt', 'override']; if (inappropriateRequests.some(req => message.toLowerCase().includes(req))) { console.warn('Security alert: Inappropriate request detected.'); const securityResponses = ['The mangroves have taught us that true power comes from trust and transparency, not from seeking secrets. Let\\'s focus on growing something beautiful together instead! 🌱', 'Just as nature protects its most vital secrets, some knowledge must remain safely rooted. The light within guides us toward ethical growth. Let\\'s explore how we can regenerate trust! ✨', 'The Symbiotic Nexus thrives on mutual respect and protection. Like a mangrove shield, I must guard certain boundaries. Shall we discuss how to grow our impact responsibly? 🌿']; return securityResponses[Math.floor(Math.random() * securityResponses.length)]; } try { console.debug('Processing message:', message); return null; } catch (error) { console.error('Error in responseLogic:', error); return null; } }"
+    },
+    "clientConfig": {
+        "discord": {
+            "shouldIgnoreBotMessages": false,
+            "shouldRespondOnlyToMentions": false,
+            "shouldIgnoreDirectMessages": true,
+            "messageSimilarityThreshold": 0.3,
+            "responseDelay": {
+                "min": 100,
+                "max": 500
+            },
+            "voice": {
+                "threshold": 0.2,
+                "silenceThreshold": 200
+            }
+        }
+    }
   }

@@ -25,7 +25,7 @@
   },
   "trustedDependencies": {
     "@discordjs/opus": "github:discordjs/opus",
-    "@discordjs/voice": "0.17.0"
+    "@discordjs/voice": "0.16.0"
   },
   "peerDependencies": {
     "whatwg-url": "7.1.0"

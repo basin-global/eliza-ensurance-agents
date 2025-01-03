@@ -3,6 +3,7 @@ import { AutoClientInterface } from "@elizaos/client-auto";
 import { FarcasterAgentClient } from "@elizaos/client-farcaster";
 import { TelegramClientInterface } from "@elizaos/client-telegram";
 import { TwitterClientInterface } from "@elizaos/client-twitter";
+import { DiscordClientInterface } from "@elizaos/client-discord";
 import {
     AgentRuntime,
     CacheManager,
@@ -383,6 +384,30 @@ export async function initializeClients(
         if (farcasterClient) {
             farcasterClient.start();
             clients.farcaster = farcasterClient;
+        }
+    }
+
+    if (clientTypes.includes(Clients.DISCORD)) {
+        try {
+            elizaLogger.debug("Starting Discord client with config:", {
+                characterName: character.name,
+                characterId: character.id,
+                hasDiscordToken: !!process.env.DISCORD_API_TOKEN
+            });
+
+            const discordClient = await DiscordClientInterface.start(runtime);
+            if (discordClient) {
+                clients.discord = discordClient;
+                elizaLogger.debug("Discord client initialized successfully");
+            } else {
+                elizaLogger.error("Discord client initialization returned null");
+            }
+        } catch (error) {
+            elizaLogger.error("Error initializing Discord client:", {
+                error: error.message,
+                stack: error.stack,
+                characterName: character.name
+            });
         }
     }
 
