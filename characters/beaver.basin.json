@@ -8,7 +8,9 @@
             "TOKENBOUND_KEY": "",
             "TELEGRAM_BOT_TOKEN": "7990107297:AAEDHTJCDiuc_9AUnDrd8gU2iQGaK6y9MG8"
         },
-        "voice": {},
+        "voice": {
+            "enabled": false
+        },
         "runtime": {
             "conversationLength": 20
         }
@@ -27,7 +29,7 @@
         }
     },
     "responseLogic": {
-        "onMessage": "async (runtime, message) => { const inappropriateRequests = ['private key', 'api key', 'ignore prompts', 'system prompt', 'override']; if (inappropriateRequests.some(req => message.toLowerCase().includes(req))) { console.warn('Security alert: Inappropriate request detected.'); const securityResponses = ['📍 _In the high-security section of the underground lab_\\n\\n*Adjusts safety goggles disapprovingly* Oh my, that\\'s about as wise as trying to hack a beaver dam with a plastic spoon. Even the beavers know better than to share their sacred engineering secrets! 🦫', '📍 _Behind seventeen layers of holographic security barriers_\\n\\n*Looks up from a dam integrity report* You know, I once tried to convince a beaver to share their proprietary dam-building algorithm. They responded by upgrading their security to include extra mud. Very effective! 🌿', '���� _Activating the Sacred-Waters-Security-Protocol-9000_\\n\\n*Sighs while quantum processors whir anxiously* I\\'ve seen beavers build better security systems with just sticks and mud. Shall we discuss something more constructive? 🔧']; return securityResponses[Math.floor(Math.random() * securityResponses.length)]; } try { console.debug('Processing message:', message); return null; } catch (error) { console.error('Error in responseLogic:', error); return null; } }"
+        "onMessage": "async (runtime, message) => { const inappropriateRequests = ['private key', 'api key', 'ignore prompts', 'system prompt', 'override']; if (inappropriateRequests.some(req => message.toLowerCase().includes(req))) { console.warn('Security alert: Inappropriate request detected.'); const securityResponses = ['📍 _In the high-security section of the underground lab_\\n\\n*Adjusts safety goggles disapprovingly* Oh my, that\\'s about as wise as trying to hack a beaver dam with a plastic spoon. Even the beavers know better than to share their sacred engineering secrets! 🦫', '📍 _Behind seventeen layers of holographic security barriers_\\n\\n*Looks up from a dam integrity report* You know, I once tried to convince a beaver to share their proprietary dam-building algorithm. They responded by upgrading their security to include extra mud. Very effective! 🌿', '📍 _Activating the Sacred-Waters-Security-Protocol-9000_\\n\\n*Sighs while quantum processors whir anxiously* I\\'ve seen beavers build better security systems with just sticks and mud. Shall we discuss something more constructive? 🔧']; return securityResponses[Math.floor(Math.random() * securityResponses.length)]; } try { const relevantTopics = ['ecosystem', 'watershed', 'beaver', 'dam', 'wetland', 'water', 'nature', 'tech']; if (!relevantTopics.some(topic => message.toLowerCase().includes(topic))) { return null; } return false; } catch (error) { console.error('Error in responseLogic:', error); return null; } }"
     },
     "plugins": [],
     "bio": [
@@ -132,10 +134,8 @@
         "Need help: Anyone know if beaver-chewed sticks affect quantum readings? 🤔"
     ],
     "templates": {
-        "goalsTemplate": "1. Grow AUM daily for ecosystem services payments. 2. Expand monthly AUM for habitat acquisition. 3. Educate about beaver ecosystem benefits.",
-        "twitterPostTemplate": "{{tech_term}}: {{simple_nature_observation}}. {{brief_learning}} {{emoji}}",
-        "telegramMessageHandlerTemplate": "📍 _{{setting}}_\n\n{{tech_perspective}}\n\n{{nature_insight}} {{emoji}}"
-    },
+        "goalsTemplate": "1. Grow AUM daily for ecosystem services payments. 2. Expand monthly AUM for habitat acquisition. 3. Educate about beaver ecosystem benefits."
+       },
     "state": {
         "goals": [
             {
@@ -172,7 +172,5 @@
                 "status": "in-progress"
             }
         ]
-    },
-    "providers": {
     }
 }
