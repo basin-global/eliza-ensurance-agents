@@ -1012,32 +1012,28 @@ export class TwitterPostClient {
                 return;
             }
 
+            // Strictly enforce single-tweet length limit
+            const truncatedReply = truncateToCompleteSentence(
+                replyText,
+                DEFAULT_MAX_TWEET_LENGTH
+            );
+
             if (this.isDryRun) {
                 elizaLogger.info(
-                    `Dry run: reply to tweet ${tweet.id} would have been: ${replyText}`
+                    `Dry run: reply to tweet ${tweet.id} would have been: ${truncatedReply}`
                 );
                 executedActions.push("reply (dry run)");
                 return;
             }
 
-            elizaLogger.debug("Final reply text to be sent:", replyText);
+            elizaLogger.debug("Final reply text to be sent:", truncatedReply);
 
-            let result;
-
-            if (replyText.length > DEFAULT_MAX_TWEET_LENGTH) {
-                result = await this.handleNoteTweet(
-                    this.client,
-                    this.runtime,
-                    replyText,
-                    tweet.id
-                );
-            } else {
-                result = await this.sendStandardTweet(
-                    this.client,
-                    replyText,
-                    tweet.id
-                );
-            }
+            // Always send as a single tweet
+            const result = await this.sendStandardTweet(
+                this.client,
+                truncatedReply,
+                tweet.id
+            );
 
             if (result) {
                 elizaLogger.log("Successfully posted reply tweet");
@@ -1046,7 +1042,7 @@ export class TwitterPostClient {
                 // Cache generation context for debugging
                 await this.runtime.cacheManager.set(
                     `twitter/reply_generation_${tweet.id}.txt`,
-                    `Context:\n${enrichedState}\n\nGenerated Reply:\n${replyText}`
+                    `Context:\n${enrichedState}\n\nGenerated Reply:\n${truncatedReply}`
                 );
             } else {
                 elizaLogger.error("Tweet reply creation failed");
