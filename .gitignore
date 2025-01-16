@@ -65,8 +65,12 @@ timeline_cache.json
 
 *.sqlite
 
-characters/*.example.json
-characters/*.example
+# Only ignore the specific characters directory (submodule)
+# /characters/
+
+# Explicitly allow these character directories
+!characters-archive/
+!characters-examples/
 
 packages/core/src/providers/cache
 packages/core/src/providers/cache/*
