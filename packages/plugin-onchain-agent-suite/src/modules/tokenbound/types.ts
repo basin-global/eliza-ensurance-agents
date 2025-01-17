@@ -1,9 +1,22 @@
-// Core types aligned with tokenbound SDK
+import { Action } from '@elizaos/core';
+
+// Base Tokenbound Account structure (will align with SDK)
 export interface TokenboundAccount {
-  chainId: number;           // Standard chains (e.g. 8453 for Base)
-                            // For custom chains, we'll handle in the tokenbound module
-  tokenContract: string;     // NFT contract address
-  tokenId: string;          // NFT token ID
-  accountAddress: string;    // TBA address (`account in SDK)
-  expectedOwner?: string;   // Expected NFT owner address (for validation)
+  chainId: number;
+  tokenContract: string;
+  tokenId: string;
+  accountAddress: string;
+}
+
+// Base transaction format - only what agent needs to know
+export interface TokenboundTransaction {
+  to: string;
+  value?: string;
+  data?: string;
+}
+
+// Extended Action type for Tokenbound
+export interface TokenboundAction extends Action {
+  // No config visible to agent
+  // Will handle method/transform at runtime level
 }
