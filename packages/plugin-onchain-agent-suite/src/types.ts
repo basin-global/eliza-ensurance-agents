@@ -1,4 +1,6 @@
-import { Plugin } from '@elizaos/core';
+import { Plugin, Action, Provider, Evaluator } from '@elizaos/core';
+import { TokenboundAccount } from './modules/tokenbound/types';
+import { PlaceDescription } from './modules/place/types';
 
 // Auth types for different scenarios
 export type EOAAuth = {
@@ -14,6 +16,14 @@ export type ServerAuth = {
   authKeyName?: string;      // Optional: Name of secret or will check env.PRIVY_AUTH_KEY
 }
 
+// Module type definition
+export interface Module {
+  actions?: Action[];
+  providers?: Provider[];
+  evaluators?: Evaluator[];
+  initialize?: (runtime: any) => Promise<void>;
+}
+
 // Plugin configuration in character file
 export interface OnchainAgentConfig {
   account: TokenboundAccount;
@@ -23,6 +33,9 @@ export interface OnchainAgentConfig {
 }
 
 // Plugin runtime config
-export interface PluginConfig {
+export interface RuntimeConfig {
   provider?: string;
 }
+
+// Re-export as PluginConfig for backwards compatibility
+export type PluginConfig = RuntimeConfig;

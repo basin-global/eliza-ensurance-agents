@@ -30,8 +30,8 @@ import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import yargs from "yargs";
-// import { tokenboundPlugin } from "@elizaos/plugin-tokenbound";
 import { webSearchPlugin } from "@elizaos/plugin-web-search";
+import { onchainPlugin } from '@elizaos/plugin-onchain-agent-suite';
 
 const __filename = fileURLToPath(import.meta.url); // get the resolved path to the file
 const __dirname = path.dirname(__filename); // get the name of the directory
@@ -480,7 +480,7 @@ export async function createAgent(
             getSecret(character, "HEURIST_API_KEY")
                 ? imageGenerationPlugin
                 : null,
-                // getSecret(character, "TOKENBOUND_KEY") ? tokenboundPlugin : null,
+            onchainPlugin,
             webSearchPlugin,
         ].filter(Boolean),
         providers: [],

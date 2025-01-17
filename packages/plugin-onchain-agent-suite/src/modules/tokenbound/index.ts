@@ -1,18 +1,22 @@
 import { Service } from '@elizaos/core';
-import type { PluginConfig } from '../../index';
+import type { PluginConfig } from '../../types';
 import { securityProvider } from './providers/security';
 import { policyEvaluator } from './evaluators/policy';
+import { getNativeErc20BalanceAction } from './actions/getNativeErc20Balance';
+import { getNftBalanceAction } from './actions/getNftBalance';
 
-// Basic module exports
+export * from './types';
+export * from './actions';
+
+// Module exports
 export const tokenboundModule = {
-  // Will expand these as needed
-  actions: [],
-  services: [],
+  actions: [
+    getNativeErc20BalanceAction,
+    getNftBalanceAction
+  ],
   providers: [securityProvider],
-  evaluators: [policyEvaluator]
+  evaluators: [policyEvaluator],
+  initialize: async (runtime: any) => {
+    // Will add initialization if needed
+  }
 };
-
-// Export types if needed by other modules
-export interface TokenboundConfig extends PluginConfig {
-  registryAddress?: string;
-}

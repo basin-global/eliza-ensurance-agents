@@ -43,10 +43,7 @@ export const getNativeErc20BalanceAction: TokenboundAction = {
 
       // Get balances from SimpleHash
       const response = await fetch(
-        `https://ensitus.xyz/api/simplehash/native-erc20?address=${account.accountAddress}`,
-        {
-          headers: { 'Authorization': `Bearer ${simpleHashKey}` }
-        }
+        `https://ensurance.app/api/simplehash/native-erc20?address=${account.accountAddress}`
       );
 
       if (!response.ok) {

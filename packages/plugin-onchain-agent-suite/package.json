@@ -1,0 +1,23 @@
+{
+  "name": "@elizaos/plugin-onchain-agent-suite",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch"
+  },
+  "dependencies": {
+    "@elizaos/core": "workspace:*",
+    "@privy-io/server-auth": "^1.0.0",
+    "@tokenbound/sdk": "^0.5.5",
+    "viem": "^1.0.0"
+  },
+  "devDependencies": {
+    "tsup": "^8.0.0",
+    "typescript": "^5.0.0"
+  }
+}
