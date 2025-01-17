@@ -1,10 +1,17 @@
-// Place types supporting natural language description
-export interface PlaceDescription {
-  description: string;      // Natural language description of location
+import { Provider } from '@elizaos/core';
+
+/**
+ * Configuration for place-based features
+ * Currently focused on natural language location descriptions
+ * Future: Add structured location data (coordinates, geojson, h3, etc.)
+ *
+ * @recommended Limit location array to 1-3 items for focused spatial context
+ */
+export interface PlaceConfig {
+  location?: string[];      // Natural language location descriptions
 }
 
-// Simple place configuration for now
-// Future: Add location verification, coordinates, etc.
-export interface PlaceConfig {
-  location?: string;    // Where agent is based/operates
+// Plugin configuration
+export interface PluginConfig {
+  providers: Provider[];
 }

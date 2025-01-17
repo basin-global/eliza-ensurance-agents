@@ -1,13 +1,19 @@
-import { Provider } from '@elizaos/core';
+import { Provider, Memory, IAgentRuntime, State } from '@elizaos/core';
 import type { ImpactConfig } from './types';
 
+/**
+ * Provider for impact intentions
+ * Currently supplies what impact the agent aims to make
+ * Future: Will include actual impact measurements
+ */
 export const impactProvider: Provider = {
-  type: 'IMPACT',
-  async getContext(message: any, runtime: any) {
-    const config = runtime.character.onchainAgent as ImpactConfig;
+  get: async (runtime: IAgentRuntime, message: Memory, state?: State) => {
+    // Get impact configuration from character settings
+    const config = runtime.getSetting('impact') as ImpactConfig | undefined;
+
     return {
       impact: {
-        objectives: config?.objectives || 'No objectives defined'
+        impact: config?.impact || []
       }
     };
   }

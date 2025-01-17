@@ -3,9 +3,7 @@ import { Provider } from '@elizaos/core';
 // Types for influence system
 export interface InfluencedBy {
   operator?: string[];
-  individuals?: string[];
-  categories?: string[];
-  inspirations?: string[];  // Sources of inspiration and motivation
+  inspiration?: string[];
 }
 
 export interface SeeksToInfluence {
@@ -18,9 +16,12 @@ export interface InfluenceConfig {
   seeksToInfluence?: SeeksToInfluence;
 }
 
-// Combined extended character config
+/**
+ * Configuration for the extend plugin
+ * Defines purpose and influence relationships
+ */
 export interface ExtendConfig {
-  purpose?: string;
+  purpose?: string[];
   influence?: InfluenceConfig;
 }
 

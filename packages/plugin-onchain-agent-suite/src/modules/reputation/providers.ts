@@ -1,13 +1,19 @@
-import { Provider } from '@elizaos/core';
+import { Provider, Memory, IAgentRuntime, State } from '@elizaos/core';
 import type { ReputationConfig } from './types';
 
+/**
+ * Provider for reputation context
+ * Currently supplies aspirational reputation statements
+ * Future: Will include verified reputation data
+ */
 export const reputationProvider: Provider = {
-  type: 'REPUTATION',
-  async getContext(message: any, runtime: any) {
-    const config = runtime.character.onchainAgent as ReputationConfig;
+  get: async (runtime: IAgentRuntime, message: Memory, state?: State) => {
+    // Get reputation configuration from character settings
+    const config = runtime.getSetting('reputation') as ReputationConfig | undefined;
+
     return {
       reputation: {
-        aspirations: config?.aspirations || 'No aspirations defined'
+        aspires: config?.aspires || []
       }
     };
   }
