@@ -95,21 +95,15 @@ export const getNativeErc20BalanceAction: Action = {
 
       const data: SimpleHashBalance = await response.json();
 
-      // Pass raw data to LLM for formatting
+      // Format the balance data
+      const formattedText = formatBalanceResponse(data);
+
+      // Pass formatted text and raw data to LLM
       callback({
-        text: '', // Let the LLM format the response
+        text: formattedText,
         content: {
           success: true,
-          balances: data,
-          address: account.accountAddress,
-          rawBalances: Object.entries(data.groupedBalances).flatMap(([chain, tokens]) =>
-            tokens.map(token => ({
-              chain,
-              symbol: token.symbol,
-              amount: Number(token.queried_wallet_balances?.[0]?.quantity_string || '0') / Math.pow(10, token.decimals),
-              usdValue: Number(token.queried_wallet_balances?.[0]?.value_usd_string || '0')
-            }))
-          ).filter(b => b.amount > 0)
+          data: data
         }
       }, []);
 
