@@ -1,4 +1,4 @@
-import { Plugin, Action, Provider, Evaluator } from '@elizaos/core';
+import { Plugin, Action, Provider, Evaluator, Character } from '@elizaos/core';
 import { TokenboundAccount } from './modules/tokenbound/types';
 import { PlaceConfig } from './modules/place/types';
 
@@ -41,8 +41,6 @@ export interface RuntimeConfig {
 export type PluginConfig = RuntimeConfig;
 
 // Extend the core Character type
-declare module '@elizaos/core' {
-  interface Character {
-    onchainAgent?: OnchainAgentConfig;
-  }
+export type ExtendedCharacter = Character & {
+  onchainAgent?: OnchainAgentConfig;
 }

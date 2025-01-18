@@ -1,4 +1,6 @@
-import { TokenboundAction, TokenboundAccount } from '../types';
+import { Action, IAgentRuntime } from '@elizaos/core';
+import { ExtendedCharacter } from '../../../types';
+import { TokenboundAccount } from '../types';
 import type { Address } from 'viem';
 
 interface TokenBalance {
@@ -16,6 +18,7 @@ interface TokenBalance {
     quantity: number;
     quantity_string: string;
     value_usd_cents: number;
+    value_usd_string?: string;
   }>;
 }
 
@@ -25,65 +28,105 @@ interface SimpleHashBalance {
   ethPrice: number | null;
 }
 
-export const getNativeErc20BalanceAction: TokenboundAction = {
-  name: 'TBA_GET_NATIVE_ERC20_BALANCE',
-  description: 'Get native token and ERC20 balances for the Tokenbound Account',
+function formatBalanceResponse(data: SimpleHashBalance): string {
+  console.log('Formatting response data:', JSON.stringify(data, null, 2));
+  const lines: string[] = [];
+  const seenBalances = new Set();
 
-  async handler(runtime, message, state, options, callback) {
+  const formatTokenAmount = (amount: string, decimals: number): string => {
+    const value = Number(amount) / Math.pow(10, decimals);
+    return value.toLocaleString(undefined, { maximumFractionDigits: 4 });
+  };
+
+  const processBalance = (token: TokenBalance) => {
+    if (token.total_quantity_string !== "0") {
+      const amount = formatTokenAmount(token.total_quantity_string, token.decimals);
+      const usdValue = token.total_value_usd_cents / 100;
+      const balanceLine = `base ${token.symbol}: ${amount} ($${usdValue.toFixed(2)})`;
+
+      if (!seenBalances.has(balanceLine)) {
+        seenBalances.add(balanceLine);
+        lines.push(balanceLine);
+      }
+    }
+  };
+
+  // Process Base chain balances
+  const baseBalances = data.groupedBalances['base'] || [];
+  baseBalances.forEach(processBalance);
+
+  // Process Base chain fungible tokens
+  data.fungibles
+    .filter(token => token.chain === 'base')
+    .forEach(processBalance);
+
+  if (lines.length === 0) {
+    lines.push('No balances found');
+  }
+
+  const response = lines.join('\n');
+  console.log('Formatted response:', response);
+  return response;
+}
+
+export const getNativeErc20BalanceAction: Action = {
+  name: 'getNativeErc20Balance',
+  description: 'Get native and ERC20 token balances for the agent account',
+  handler: async (runtime: IAgentRuntime & { character: ExtendedCharacter }) => {
     try {
-      const account = runtime.character.onchainAgent?.account as TokenboundAccount;
-      if (!account?.accountAddress) {
-        throw new Error('No tokenbound account configured');
+      const account = runtime.character.onchainAgent?.account;
+      if (!account) {
+        return {
+          success: false,
+          error: 'No onchain agent account configured'
+        };
       }
 
-      const simpleHashKey = runtime.getSetting('SIMPLEHASH_API_KEY');
-      if (!simpleHashKey) {
-        throw new Error('SimpleHash API key not configured');
-      }
-
-      // Get balances from SimpleHash
+      // Use public endpoint for balance fetching
       const response = await fetch(
         `https://ensurance.app/api/simplehash/native-erc20?address=${account.accountAddress}`
       );
 
       if (!response.ok) {
-        throw new Error(`SimpleHash API error: ${response.statusText}`);
+        throw new Error(`API error: ${response.statusText}`);
       }
 
       const data: SimpleHashBalance = await response.json();
+      const formattedResponse = formatBalanceResponse(data);
 
-      // Format response
-      const balances = formatBalances(data);
-
-      if (callback) {
-        callback({
-          text: balances.join('\n'),
-          content: {
-            success: true,
-            balances: data,
-            formatted: balances
-          }
-        });
-      }
-      return true;
+      return {
+        success: true,
+        data: {
+          balances: data,
+          formatted: formattedResponse,
+          address: account.accountAddress
+        }
+      };
 
     } catch (error) {
-      if (callback) {
-        callback({
-          text: `Error getting token balances: ${error.message}`,
-          content: { error: error.message }
-        });
-      }
-      return false;
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
     }
   },
 
-  validate: async (runtime) => {
-    const account = runtime.character.onchainAgent?.account as TokenboundAccount;
-    return !!(account?.accountAddress && runtime.getSetting('SIMPLEHASH_API_KEY'));
+  validate: async (runtime: IAgentRuntime & { character: ExtendedCharacter }) => {
+    // Only check if account is configured since API is public
+    return !!runtime.character.onchainAgent?.account;
   },
 
-  similes: ['GET_TOKEN_BALANCE', 'CHECK_TOKEN_BALANCE', 'SHOW_TOKENS', 'VIEW_TOKENS'],
+  similes: [
+    'GET_TOKEN_BALANCE',
+    'CHECK_TOKEN_BALANCE',
+    'SHOW_TOKENS',
+    'VIEW_TOKENS',
+    'CHECK_WALLET',
+    'WALLET_BALANCE',
+    'ACCOUNT_BALANCE',
+    'VIEW_WALLET',
+    'SHOW_WALLET'
+  ],
 
   examples: [
     [
@@ -95,39 +138,22 @@ export const getNativeErc20BalanceAction: TokenboundAction = {
         user: 'agent',
         content: {
           text: 'Here are your token balances:\nETH: 1.5 ($3000)\nUSDC: 100 ($100)',
-          action: 'TBA_GET_NATIVE_ERC20_BALANCE'
+          action: 'getNativeErc20Balance'
+        }
+      }
+    ],
+    [
+      {
+        user: 'user',
+        content: { text: 'Show me my wallet balance' }
+      },
+      {
+        user: 'agent',
+        content: {
+          text: 'Here are your token balances:\nNo balances found',
+          action: 'getNativeErc20Balance'
         }
       }
     ]
   ]
 };
-
-function formatBalances(data: SimpleHashBalance): string[] {
-  const lines: string[] = [];
-  const seenBalances = new Set();
-
-  const formatAmount = (amount: string, decimals: number): string => {
-    const value = Number(amount) / Math.pow(10, decimals);
-    return value.toLocaleString(undefined, { maximumFractionDigits: 4 });
-  };
-
-  // Process all balances
-  const processBalance = (token: TokenBalance) => {
-    if (token.total_quantity_string !== '0') {
-      const amount = formatAmount(token.total_quantity_string, token.decimals);
-      const usdValue = token.total_value_usd_cents / 100;
-      const line = `${token.symbol}: ${amount} ($${usdValue.toFixed(2)})`;
-
-      if (!seenBalances.has(line)) {
-        seenBalances.add(line);
-        lines.push(line);
-      }
-    }
-  };
-
-  // Process all tokens
-  Object.values(data.groupedBalances).flat().forEach(processBalance);
-  data.fungibles.forEach(processBalance);
-
-  return lines.length ? lines : ['No token balances found'];
-}
