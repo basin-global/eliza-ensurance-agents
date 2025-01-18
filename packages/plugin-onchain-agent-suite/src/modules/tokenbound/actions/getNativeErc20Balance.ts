@@ -1,4 +1,4 @@
-import { Action, IAgentRuntime } from '@elizaos/core';
+import { Action, IAgentRuntime, Memory, State, HandlerCallback } from '@elizaos/core';
 import { ExtendedCharacter } from '../../../types';
 import { TokenboundAccount } from '../types';
 import type { Address } from 'viem';
@@ -70,14 +70,18 @@ function formatBalanceResponse(data: SimpleHashBalance): string {
 export const getNativeErc20BalanceAction: Action = {
   name: 'getNativeErc20Balance',
   description: 'Get native and ERC20 token balances for the agent account',
-  handler: async (runtime: IAgentRuntime & { character: ExtendedCharacter }) => {
+  handler: async (runtime: IAgentRuntime & { character: ExtendedCharacter }, message: Memory, state: State, options: any, callback: HandlerCallback) => {
     try {
       const account = runtime.character.onchainAgent?.account;
       if (!account) {
-        return {
-          success: false,
-          error: 'No onchain agent account configured'
-        };
+        callback({
+          text: 'I do not have a wallet configured.',
+          content: {
+            success: false,
+            error: 'No onchain agent account configured'
+          }
+        }, []);
+        return;
       }
 
       // Use public endpoint for balance fetching
@@ -90,26 +94,34 @@ export const getNativeErc20BalanceAction: Action = {
       }
 
       const data: SimpleHashBalance = await response.json();
-      const formattedResponse = formatBalanceResponse(data);
 
-      // Return both the formatted text and raw data
-      return {
-        success: true,
-        data: {
+      // Pass raw data to LLM for formatting
+      callback({
+        text: '', // Let the LLM format the response
+        content: {
+          success: true,
           balances: data,
-          formatted: formattedResponse,
-          address: account.accountAddress
-        },
-        text: `Here are my token balances:\n${formattedResponse}`
-      };
+          address: account.accountAddress,
+          rawBalances: Object.entries(data.groupedBalances).flatMap(([chain, tokens]) =>
+            tokens.map(token => ({
+              chain,
+              symbol: token.symbol,
+              amount: Number(token.queried_wallet_balances?.[0]?.quantity_string || '0') / Math.pow(10, token.decimals),
+              usdValue: Number(token.queried_wallet_balances?.[0]?.value_usd_string || '0')
+            }))
+          ).filter(b => b.amount > 0)
+        }
+      }, []);
 
     } catch (error) {
       console.error('Balance check failed:', error);
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Unknown error',
-        text: 'Sorry, I encountered an error checking my balances.'
-      };
+      callback({
+        text: 'Sorry, I encountered an error checking my balances.',
+        content: {
+          success: false,
+          error: error instanceof Error ? error.message : 'Unknown error'
+        }
+      }, []);
     }
   },
 
@@ -139,7 +151,7 @@ export const getNativeErc20BalanceAction: Action = {
       {
         user: 'agent',
         content: {
-          text: 'Here are your token balances:\nETH: 1.5 ($3000)\nUSDC: 100 ($100)',
+          text: "I have several tokens in my wallet: about 1.5 ETH (worth around $3,000), 100 USDC ($100), and a small amount of ENSURE tokens.",
           action: 'getNativeErc20Balance'
         }
       }
@@ -152,7 +164,33 @@ export const getNativeErc20BalanceAction: Action = {
       {
         user: 'agent',
         content: {
-          text: 'Here are your token balances:\nNo balances found',
+          text: "Let me check your balances... I see you have:\n- ETH: 1.5 (approximately $3,000)\n- USDC: 100 ($100)\n- ENSURE: 5,000 tokens",
+          action: 'getNativeErc20Balance'
+        }
+      }
+    ],
+    [
+      {
+        user: 'user',
+        content: { text: 'How much ETH do I have?' }
+      },
+      {
+        user: 'agent',
+        content: {
+          text: "You currently have 1.5 ETH in your wallet, which is worth approximately $3,000 at current prices.",
+          action: 'getNativeErc20Balance'
+        }
+      }
+    ],
+    [
+      {
+        user: 'user',
+        content: { text: 'What is my total portfolio value?' }
+      },
+      {
+        user: 'agent',
+        content: {
+          text: "Your total portfolio value is approximately $3,100, consisting mainly of ETH ($3,000) and some USDC ($100).",
           action: 'getNativeErc20Balance'
         }
       }
