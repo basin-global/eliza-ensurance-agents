@@ -94,19 +94,23 @@ export const getNativeErc20BalanceAction: Action = {
       const data: SimpleHashBalance = await response.json();
       const formattedResponse = formatBalanceResponse(data);
 
+      // Return both the formatted text and raw data
       return {
         success: true,
         data: {
           balances: data,
           formatted: formattedResponse,
           address: account.accountAddress
-        }
+        },
+        text: `Here are my token balances:\n${formattedResponse}`
       };
 
     } catch (error) {
+      console.error('Balance check failed:', error);
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Unknown error'
+        error: error instanceof Error ? error.message : 'Unknown error',
+        text: 'Sorry, I encountered an error checking my balances.'
       };
     }
   },
