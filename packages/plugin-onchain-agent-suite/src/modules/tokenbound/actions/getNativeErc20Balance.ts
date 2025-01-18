@@ -39,10 +39,12 @@ function formatBalanceResponse(data: SimpleHashBalance): string {
   };
 
   const processBalance = (token: TokenBalance) => {
-    if (token.total_quantity_string !== "0") {
-      const amount = formatTokenAmount(token.total_quantity_string, token.decimals);
-      const usdValue = token.total_value_usd_cents / 100;
-      const balanceLine = `base ${token.symbol}: ${amount} ($${usdValue.toFixed(2)})`;
+    // Get the first balance from queried_wallet_balances
+    const balance = token.queried_wallet_balances?.[0];
+    if (balance && balance.quantity_string !== "0") {
+      const amount = formatTokenAmount(balance.quantity_string, token.decimals);
+      const usdValue = balance.value_usd_string || "0";
+      const balanceLine = `${token.chain} ${token.symbol}: ${amount} ($${usdValue})`;
 
       if (!seenBalances.has(balanceLine)) {
         seenBalances.add(balanceLine);
@@ -51,14 +53,10 @@ function formatBalanceResponse(data: SimpleHashBalance): string {
     }
   };
 
-  // Process Base chain balances
-  const baseBalances = data.groupedBalances['base'] || [];
-  baseBalances.forEach(processBalance);
-
-  // Process Base chain fungible tokens
-  data.fungibles
-    .filter(token => token.chain === 'base')
-    .forEach(processBalance);
+  // Process all chain balances
+  Object.entries(data.groupedBalances).forEach(([chain, tokens]) => {
+    tokens.forEach(processBalance);
+  });
 
   if (lines.length === 0) {
     lines.push('No balances found');
