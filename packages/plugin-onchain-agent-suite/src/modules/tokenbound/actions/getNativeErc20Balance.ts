@@ -28,45 +28,6 @@ interface SimpleHashBalance {
   ethPrice: number | null;
 }
 
-function formatBalanceResponse(data: SimpleHashBalance): string {
-  console.log('Formatting response data:', JSON.stringify(data, null, 2));
-  const lines: string[] = [];
-  const seenBalances = new Set();
-
-  const formatTokenAmount = (amount: string, decimals: number): string => {
-    const value = Number(amount) / Math.pow(10, decimals);
-    return value.toLocaleString(undefined, { maximumFractionDigits: 4 });
-  };
-
-  const processBalance = (token: TokenBalance) => {
-    // Get the first balance from queried_wallet_balances
-    const balance = token.queried_wallet_balances?.[0];
-    if (balance && balance.quantity_string !== "0") {
-      const amount = formatTokenAmount(balance.quantity_string, token.decimals);
-      const usdValue = balance.value_usd_string || "0";
-      const balanceLine = `${token.chain} ${token.symbol}: ${amount} ($${usdValue})`;
-
-      if (!seenBalances.has(balanceLine)) {
-        seenBalances.add(balanceLine);
-        lines.push(balanceLine);
-      }
-    }
-  };
-
-  // Process all chain balances
-  Object.entries(data.groupedBalances).forEach(([chain, tokens]) => {
-    tokens.forEach(processBalance);
-  });
-
-  if (lines.length === 0) {
-    lines.push('No balances found');
-  }
-
-  const response = lines.join('\n');
-  console.log('Formatted response:', response);
-  return response;
-}
-
 export const getNativeErc20BalanceAction: Action = {
   name: 'getNativeErc20Balance',
   description: 'Get native and ERC20 token balances for the agent account',
@@ -95,15 +56,21 @@ export const getNativeErc20BalanceAction: Action = {
 
       const data: SimpleHashBalance = await response.json();
 
-      // Format the balance data
-      const formattedText = formatBalanceResponse(data);
-
-      // Pass formatted text and raw data to LLM
+      // Pass raw data to LLM for natural language formatting
       callback({
-        text: formattedText,
+        text: '', // Let the LLM format the response based on the raw data
         content: {
           success: true,
-          data: data
+          balances: data,
+          address: account.accountAddress,
+          rawBalances: Object.entries(data.groupedBalances).flatMap(([chain, tokens]) =>
+            tokens.map(token => ({
+              chain,
+              symbol: token.symbol,
+              amount: Number(token.queried_wallet_balances?.[0]?.quantity_string || '0') / Math.pow(10, token.decimals),
+              usdValue: Number(token.queried_wallet_balances?.[0]?.value_usd_string || '0')
+            }))
+          ).filter(b => b.amount > 0)
         }
       }, []);
 
