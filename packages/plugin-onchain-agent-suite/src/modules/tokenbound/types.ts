@@ -6,6 +6,8 @@ export interface TokenboundAccount {
   tokenContract: string;
   tokenId: string;
   accountAddress: string;
+  onchainName?: string;  // Optional: name.group format (e.g. beaver.basin)
+  expectedOwner?: string;
 }
 
 // Base transaction format - only what agent needs to know

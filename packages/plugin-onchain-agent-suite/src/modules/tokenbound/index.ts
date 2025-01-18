@@ -1,4 +1,4 @@
-import { Service } from '@elizaos/core';
+import { Service, IAgentRuntime } from '@elizaos/core';
 import type { PluginConfig } from '../../types';
 import { securityProvider } from './providers/security';
 import { policyEvaluator } from './evaluators/policy';
@@ -16,7 +16,7 @@ export const tokenboundModule = {
   ],
   providers: [securityProvider],
   evaluators: [policyEvaluator],
-  initialize: async (runtime: any) => {
+  initialize: async (runtime: IAgentRuntime) => {
     // Will add initialization if needed
   }
 };

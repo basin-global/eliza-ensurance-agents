@@ -33,7 +33,7 @@ export const getNftBalanceAction: TokenboundAction = {
 
       // Will update with correct API endpoint
       const response = await fetch(
-        `https://ensitus.xyz/api/simplehash/nft?address=${account.accountAddress}`,
+        `https://ensurance.app/api/simplehash/nft?address=${account.accountAddress}`,
         {
           headers: { 'Authorization': `Bearer ${simpleHashKey}` }
         }

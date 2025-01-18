@@ -1,4 +1,10 @@
-import { Provider } from '@elizaos/core';
+import { Provider, Memory, IAgentRuntime, State } from '@elizaos/core';
+
+/**
+ * Provider for security validation
+ * Currently checks messages for sensitive information patterns
+ * Future: Will include more sophisticated pattern matching and context awareness
+ */
 
 // Sensitive patterns to check for
 const SENSITIVE_PATTERNS = [
@@ -13,9 +19,7 @@ const SENSITIVE_PATTERNS = [
 ];
 
 export const securityProvider: Provider = {
-  type: 'SECURITY',
-
-  async getContext(message: any, runtime: any) {
+  get: async (runtime: IAgentRuntime, message: Memory, state?: State) => {
     // Check message content for sensitive patterns
     const messageText = message?.content?.text?.toLowerCase() || '';
 
@@ -23,15 +27,15 @@ export const securityProvider: Provider = {
       messageText.includes(pattern)
     );
 
-    if (hasSensitiveContent) {
-      return {
-        action: 'IGNORE',
-        reason: 'SECURITY_VIOLATION',
-        response: 'I cannot provide or handle sensitive information like private keys or credentials.'
-      };
-    }
-
-    // No security concerns
-    return null;
+    return {
+      security: {
+        status: hasSensitiveContent ? 'violation' : 'safe',
+        action: hasSensitiveContent ? 'ignore' : 'proceed',
+        reason: hasSensitiveContent ? 'security_violation' : null,
+        detectedPatterns: hasSensitiveContent ?
+          SENSITIVE_PATTERNS.filter(pattern => messageText.includes(pattern)) :
+          []
+      }
+    };
   }
 };
