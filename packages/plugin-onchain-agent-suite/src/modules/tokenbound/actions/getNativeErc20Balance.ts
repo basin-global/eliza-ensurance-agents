@@ -1,7 +1,30 @@
-import { Action, IAgentRuntime, Memory, State, HandlerCallback } from '@elizaos/core';
+import { Action, IAgentRuntime, Memory, State, HandlerCallback, composeContext, generateText, ModelClass } from '@elizaos/core';
 import { ExtendedCharacter } from '../../../types';
 import { TokenboundAccount } from '../types';
 import type { Address } from 'viem';
+
+// Template for balance responses
+const balanceTemplate = `
+# Knowledge
+{{knowledge}}
+
+About {{agentName}}:
+{{bio}}
+{{lore}}
+
+# Context
+You are checking wallet balances. Here is the current balance information:
+{{balances}}
+
+# Task
+Respond to the user's query about balances. Consider:
+- The specific information they asked for
+- Your character's personality
+- The importance of accuracy with financial information
+- Whether to show specific amounts or give an overview
+- Including relevant USD values when appropriate
+
+Remember you are handling real financial information, so be precise while maintaining your character's voice.`;
 
 interface TokenBalance {
   token_id?: string;
@@ -23,7 +46,6 @@ interface TokenBalance {
 }
 
 interface SimpleHashBalance {
-  fungibles: TokenBalance[];
   groupedBalances: Record<string, TokenBalance[]>;
   ethPrice: number | null;
 }
@@ -45,7 +67,6 @@ export const getNativeErc20BalanceAction: Action = {
         return;
       }
 
-      // Use public endpoint for balance fetching
       const response = await fetch(
         `https://ensurance.app/api/simplehash/native-erc20?address=${account.accountAddress}`
       );
@@ -54,33 +75,54 @@ export const getNativeErc20BalanceAction: Action = {
         throw new Error(`API error: ${response.statusText}`);
       }
 
-      const data: SimpleHashBalance = await response.json();
+      const data = await response.json() as SimpleHashBalance;
 
-      // Pass raw data to LLM for natural language formatting
+      // Format raw balances for template
+      const formattedBalances = Object.entries(data.groupedBalances)
+        .flatMap(([chain, tokens]) =>
+          tokens.map(token => ({
+            chain,
+            symbol: token.symbol,
+            amount: Number(token.queried_wallet_balances?.[0]?.quantity_string || '0') / Math.pow(10, token.decimals),
+            usdValue: Number(token.queried_wallet_balances?.[0]?.value_usd_string || '0')
+          }))
+        )
+        .filter(b => b.amount > 0);
+
+      // Include balances in template
+      const balanceContext = balanceTemplate.replace('{{balances}}', JSON.stringify(formattedBalances, null, 2));
+
+      // Compose context with balances
+      const context = composeContext({
+        state,
+        template: balanceContext
+      });
+
+      // Generate character-voiced response
+      const responseText = await generateText({
+        runtime,
+        context,
+        modelClass: ModelClass.SMALL
+      });
+
       callback({
-        text: '', // Let the LLM format the response based on the raw data
+        text: responseText,
         content: {
           success: true,
           balances: data,
           address: account.accountAddress,
-          rawBalances: Object.entries(data.groupedBalances).flatMap(([chain, tokens]) =>
-            tokens.map(token => ({
-              chain,
-              symbol: token.symbol,
-              amount: Number(token.queried_wallet_balances?.[0]?.quantity_string || '0') / Math.pow(10, token.decimals),
-              usdValue: Number(token.queried_wallet_balances?.[0]?.value_usd_string || '0')
-            }))
-          ).filter(b => b.amount > 0)
+          formattedBalances
         }
       }, []);
 
     } catch (error) {
       console.error('Balance check failed:', error);
+      const errorText = error instanceof Error ? error.message : 'Unknown error';
       callback({
-        text: 'Sorry, I encountered an error checking my balances.',
+        text: `I apologize, but I encountered an error while checking my balances: ${errorText}`,
         content: {
           success: false,
-          error: error instanceof Error ? error.message : 'Unknown error'
+          error: errorText
         }
       }, []);
     }
