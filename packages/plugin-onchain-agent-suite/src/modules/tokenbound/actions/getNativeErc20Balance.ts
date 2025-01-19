@@ -4,7 +4,7 @@ import { TokenboundAccount } from '../types';
 import type { Address } from 'viem';
 
 // Template for balance responses
-const balanceTemplate = `
+const getBalanceTemplate = (requiresCurrentBalances: boolean) => `
 # Knowledge
 {{knowledge}}
 
@@ -13,18 +13,22 @@ About {{agentName}}:
 {{lore}}
 
 # Context
-You are checking wallet balances. Here is the current balance information:
+Current wallet balances:
 {{balances}}
 
-# Task
-Respond to the user's query about balances. Consider:
-- The specific information they asked for
-- Your character's personality
-- The importance of accuracy with financial information
-- Whether to show specific amounts or give an overview
-- Including relevant USD values when appropriate
+# Query Context
+Original query: {{query}}
+Requires current balances: ${requiresCurrentBalances}
 
-Remember you are handling real financial information, so be precise while maintaining your character's voice.`;
+# Task
+Respond naturally to the balance query. Keep responses:
+- Professional yet personable
+- Accurate with numbers
+- Focused on relevant information
+- In character but without narrating actions
+${requiresCurrentBalances ? '- Use exact current balances for precise reporting' : '- Approximate values are acceptable for general overview'}
+
+Remember this is financial information - be precise with numbers while maintaining your personality.`;
 
 interface TokenBalance {
   token_id?: string;
@@ -55,8 +59,18 @@ export const getNativeErc20BalanceAction: Action = {
   description: 'Get native and ERC20 token balances for the agent account',
   handler: async (runtime: IAgentRuntime & { character: ExtendedCharacter }, message: Memory, state: State, options: any, callback: HandlerCallback) => {
     try {
+      console.log('Starting getNativeErc20Balance handler');
+
+      // Determine if we need current balances based on query
+      const requiresCurrentBalances = message.content.text.toLowerCase().match(
+        /(exact|current|precise|right now|exactly|balance|how much)/
+      ) !== null;
+
+      console.log('Query requires current balances:', requiresCurrentBalances);
+
       const account = runtime.character.onchainAgent?.account;
       if (!account) {
+        console.log('No account configured');
         callback({
           text: 'I do not have a wallet configured.',
           content: {
@@ -67,17 +81,27 @@ export const getNativeErc20BalanceAction: Action = {
         return;
       }
 
+      console.log('Fetching balances for address:', account.accountAddress);
       const response = await fetch(
-        `https://ensurance.app/api/simplehash/native-erc20?address=${account.accountAddress}`
+        `https://ensurance.app/api/simplehash/native-erc20?address=${account.accountAddress}`,
+        {
+          headers: {
+            'Cache-Control': requiresCurrentBalances ? 'no-cache' : 'max-age=300' // 5 min cache for non-exact queries
+          }
+        }
       );
 
       if (!response.ok) {
+        console.error('API response not ok:', response.status, response.statusText);
         throw new Error(`API error: ${response.statusText}`);
       }
 
+      console.log('Got API response, parsing JSON');
       const data = await response.json() as SimpleHashBalance;
+      console.log('Parsed API response:', JSON.stringify(data, null, 2));
 
       // Format raw balances for template
+      console.log('Formatting balances');
       const formattedBalances = Object.entries(data.groupedBalances)
         .flatMap(([chain, tokens]) =>
           tokens.map(token => ({
@@ -88,30 +112,32 @@ export const getNativeErc20BalanceAction: Action = {
           }))
         )
         .filter(b => b.amount > 0);
+      console.log('Formatted balances:', JSON.stringify(formattedBalances, null, 2));
 
-      // Include balances in template
-      const balanceContext = balanceTemplate.replace('{{balances}}', JSON.stringify(formattedBalances, null, 2));
-
-      // Compose context with balances
+      // Generate response using template
+      console.log('Generating response');
       const context = composeContext({
         state,
-        template: balanceContext
+        template: getBalanceTemplate(requiresCurrentBalances)
+          .replace('{{balances}}', JSON.stringify(formattedBalances, null, 2))
+          .replace('{{query}}', message.content.text)
       });
 
-      // Generate character-voiced response
       const responseText = await generateText({
         runtime,
         context,
         modelClass: ModelClass.SMALL
       });
 
+      console.log('Sending callback with response');
       callback({
         text: responseText,
         content: {
           success: true,
           balances: data,
           address: account.accountAddress,
-          formattedBalances
+          formattedBalances,
+          isCurrentBalance: requiresCurrentBalances
         }
       }, []);
 
@@ -119,7 +145,7 @@ export const getNativeErc20BalanceAction: Action = {
       console.error('Balance check failed:', error);
       const errorText = error instanceof Error ? error.message : 'Unknown error';
       callback({
-        text: `I apologize, but I encountered an error while checking my balances: ${errorText}`,
+        text: `I encountered an error checking the balances: ${errorText}`,
         content: {
           success: false,
           error: errorText
