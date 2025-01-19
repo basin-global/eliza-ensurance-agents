@@ -13,22 +13,20 @@ About {{agentName}}:
 {{lore}}
 
 # Context
-Current wallet balances:
+Query: {{query}}
+Requires current data: ${requiresCurrentBalances}
+Note: This is data from my tokenbound wallet (I=agent, you=user)
+
+# Token Data
 {{balances}}
 
-# Query Context
-Original query: {{query}}
-Requires current balances: ${requiresCurrentBalances}
-
 # Task
-Respond naturally to the balance query. Keep responses:
-- Professional yet personable
-- Accurate with numbers
-- Focused on relevant information
-- In character but without narrating actions
-${requiresCurrentBalances ? '- Use exact current balances for precise reporting' : '- Approximate values are acceptable for general overview'}
+Respond about the token data above:
+- Use exact token data (amounts, symbols, USD values)
+- No assumptions about tokens not in the data
+${requiresCurrentBalances ? '- Report current exact balances' : '- General overview is acceptable'}
 
-Remember this is financial information - be precise with numbers while maintaining your personality.`;
+Note: These are verified on-chain balances from the provided data.`;
 
 interface TokenBalance {
   token_id?: string;
@@ -175,12 +173,12 @@ export const getNativeErc20BalanceAction: Action = {
     [
       {
         user: 'user',
-        content: { text: 'What tokens do I have?' }
+        content: { text: 'What tokens do you have?' }
       },
       {
         user: 'agent',
         content: {
-          text: "I have several tokens in my wallet: about 1.5 ETH (worth around $3,000), 100 USDC ($100), and a small amount of ENSURE tokens.",
+          text: "Let me check my token balances. I have ETH, USDC, and ENSURE tokens in my wallet.",
           action: 'getNativeErc20Balance'
         }
       }
@@ -188,12 +186,12 @@ export const getNativeErc20BalanceAction: Action = {
     [
       {
         user: 'user',
-        content: { text: 'Show me my wallet balance' }
+        content: { text: 'Show me your wallet balance' }
       },
       {
         user: 'agent',
         content: {
-          text: "Let me check your balances... I see you have:\n- ETH: 1.5 (approximately $3,000)\n- USDC: 100 ($100)\n- ENSURE: 5,000 tokens",
+          text: "I'll share my current balances with you. Let me check my wallet.",
           action: 'getNativeErc20Balance'
         }
       }
@@ -201,12 +199,12 @@ export const getNativeErc20BalanceAction: Action = {
     [
       {
         user: 'user',
-        content: { text: 'How much ETH do I have?' }
+        content: { text: 'How much ETH do you have?' }
       },
       {
         user: 'agent',
         content: {
-          text: "You currently have 1.5 ETH in your wallet, which is worth approximately $3,000 at current prices.",
+          text: "Let me check my ETH balance. I'll tell you exactly what I have.",
           action: 'getNativeErc20Balance'
         }
       }
@@ -214,12 +212,12 @@ export const getNativeErc20BalanceAction: Action = {
     [
       {
         user: 'user',
-        content: { text: 'What is my total portfolio value?' }
+        content: { text: 'What is your total portfolio value?' }
       },
       {
         user: 'agent',
         content: {
-          text: "Your total portfolio value is approximately $3,100, consisting mainly of ETH ($3,000) and some USDC ($100).",
+          text: "I'll calculate the total value of all my tokens and share that with you.",
           action: 'getNativeErc20Balance'
         }
       }

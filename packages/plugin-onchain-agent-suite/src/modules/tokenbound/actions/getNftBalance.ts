@@ -1,7 +1,32 @@
-import { Action, IAgentRuntime, Memory, State, HandlerCallback } from '@elizaos/core';
+import { Action, IAgentRuntime, Memory, State, HandlerCallback, composeContext, generateText, ModelClass } from '@elizaos/core';
 import { ExtendedCharacter } from '../../../types';
 import { TokenboundAccount } from '../types';
 import type { Address } from 'viem';
+
+// Template for NFT responses
+const getNftTemplate = (requiresCurrentData: boolean) => `
+# Knowledge
+{{knowledge}}
+
+About {{agentName}}:
+{{bio}}
+{{lore}}
+
+# Context
+Query: {{query}}
+Requires current data: ${requiresCurrentData}
+Note: This is data from my tokenbound wallet (I=agent, you=user)
+
+# NFT Data
+{{nfts}}
+
+# Task
+Respond about the NFT data above:
+- Use exact NFT data (token IDs, names, quantities)
+- No assumptions about NFTs not in the data
+${requiresCurrentData ? '- Report current exact holdings' : '- General overview is acceptable'}
+
+Note: These are verified on-chain NFTs from the provided data.`;
 
 interface NFTBalance {
   nft_id: string;
@@ -40,6 +65,7 @@ function simplifyNFTData(data: SimpleHashNFTResponse, accountAddress: string) {
   return data.nfts.map(nft => {
     const balance = nft.queried_wallet_balances.find(b => b.address.toLowerCase() === accountAddress.toLowerCase());
     return {
+      tokenId: nft.token_id,
       name: nft.name,
       description: nft.description,
       collection: {
@@ -47,8 +73,11 @@ function simplifyNFTData(data: SimpleHashNFTResponse, accountAddress: string) {
         description: nft.collection.description
       },
       chain: nft.chain,
-      type: nft.contract.type,
-      quantity: balance?.quantity || 0
+      contractAddress: nft.contract_address,
+      contractType: nft.contract.type,
+      quantity: balance?.quantity || 0,
+      firstAcquired: balance?.first_acquired_date,
+      lastAcquired: balance?.last_acquired_date
     };
   }).filter(nft => nft.quantity > 0);
 }
@@ -59,6 +88,14 @@ export const getNftBalanceAction: Action = {
   handler: async (runtime: IAgentRuntime & { character: ExtendedCharacter }, message: Memory, state: State, options: any, callback: HandlerCallback) => {
     try {
       console.log('Starting getNftBalance handler');
+
+      // Determine if we need current data based on query
+      const requiresCurrentData = message.content.text.toLowerCase().match(
+        /(exact|current|precise|right now|exactly|list|show|all|how many)/
+      ) !== null;
+
+      console.log('Query requires current NFT data:', requiresCurrentData);
+
       const account = runtime.character.onchainAgent?.account;
       if (!account) {
         console.log('No account configured');
@@ -73,9 +110,13 @@ export const getNftBalanceAction: Action = {
       }
 
       console.log('Fetching NFTs for address:', account.accountAddress);
-      // Use public endpoint for NFT fetching
       const response = await fetch(
-        `https://ensurance.app/api/simplehash/nft?address=${account.accountAddress}`
+        `https://ensurance.app/api/simplehash/nft?address=${account.accountAddress}`,
+        {
+          headers: {
+            'Cache-Control': requiresCurrentData ? 'no-cache' : 'max-age=300' // 5 min cache for non-exact queries
+          }
+        }
       );
 
       if (!response.ok) {
@@ -84,61 +125,47 @@ export const getNftBalanceAction: Action = {
       }
 
       console.log('Got API response, parsing JSON');
-      const data: SimpleHashNFTResponse = await response.json();
+      const data = await response.json() as SimpleHashNFTResponse;
       console.log(`Parsed API response: Found ${data.nfts.length} NFTs`);
 
       console.log('Simplifying NFT data');
       const simplifiedNFTs = simplifyNFTData(data, account.accountAddress);
       console.log(`Simplified NFT data: Found ${simplifiedNFTs.length} NFTs for this account`);
 
-      console.log('Sending callback with NFT data');
-      // Create a minimal summary counting NFTs by collection and type
-      interface CollectionSummary {
-        collection: string;
-        chain: string;
-        count: number;
-        types: Set<string>;
-      }
+      // Generate response using template
+      console.log('Generating response');
+      const context = composeContext({
+        state,
+        template: getNftTemplate(requiresCurrentData)
+          .replace('{{nfts}}', JSON.stringify(simplifiedNFTs, null, 2))
+          .replace('{{query}}', message.content.text)
+      });
 
-      const summary = simplifiedNFTs.reduce<Record<string, CollectionSummary>>((acc, nft) => {
-        const key = `${nft.collection.name}`;
-        if (!acc[key]) {
-          acc[key] = {
-            collection: nft.collection.name,
-            chain: nft.chain,
-            count: 0,
-            types: new Set()
-          };
-        }
-        acc[key].count++;
-        acc[key].types.add(nft.type);
-        return acc;
-      }, {});
+      const responseText = await generateText({
+        runtime,
+        context,
+        modelClass: ModelClass.SMALL
+      });
 
-      // Convert summary to array and format types
-      const collectionSummary = Object.values(summary).map(item => ({
-        collection: item.collection,
-        chain: item.chain,
-        count: item.count,
-        types: Array.from(item.types)
-      }));
-
+      console.log('Sending callback with response');
       callback({
-        text: '',
+        text: responseText,
         content: {
           success: true,
           address: account.accountAddress,
-          rawNfts: simplifiedNFTs
+          nfts: simplifiedNFTs,
+          isCurrentData: requiresCurrentData
         }
       }, []);
 
     } catch (error) {
       console.error('NFT balance check failed:', error);
+      const errorText = error instanceof Error ? error.message : 'Unknown error';
       callback({
-        text: 'Sorry, I encountered an error checking my NFT balances.',
+        text: `I encountered an error checking the NFT balances: ${errorText}`,
         content: {
           success: false,
-          error: error instanceof Error ? error.message : 'Unknown error'
+          error: errorText
         }
       }, []);
     }
@@ -167,14 +194,13 @@ export const getNftBalanceAction: Action = {
     [
       {
         user: 'user',
-        content: { text: 'Do you own any NFTs?' }
+        content: { text: 'What NFTs do you have?' }
       },
       {
         user: 'agent',
         content: {
-          text: "Let me check my NFT collection. I have 1 ENSURANCE NFT (ERC721) from the ENSURANCE collection on Base, and 2 copies of a special edition NFT (ERC1155) from the same collection.",
-          action: 'getNftBalance',
-          rawNfts: []
+          text: "Let me check my NFT collection. I'll share what I currently hold.",
+          action: 'getNftBalance'
         }
       }
     ],
@@ -186,23 +212,34 @@ export const getNftBalanceAction: Action = {
       {
         user: 'agent',
         content: {
-          text: "I'll check my NFTs. I own several NFTs on Base: a unique ENSURANCE NFT (ERC721) and multiple copies of collectible items (ERC1155), all part of the ENSURANCE collection focused on ensuring ecosystems and species in perpetuity.",
-          action: 'getNftBalance',
-          rawNfts: []
+          text: "I'll share my current NFT holdings with you. Let me check my collection.",
+          action: 'getNftBalance'
         }
       }
     ],
     [
       {
         user: 'user',
-        content: { text: 'How many copies of each NFT do you have?' }
+        content: { text: 'How many NFTs do you own?' }
       },
       {
         user: 'agent',
         content: {
-          text: "Let me check my NFT quantities. In the ENSURANCE collection on Base, I have: 1 unique ENSURANCE NFT (ERC721 type, which means it's one-of-a-kind) and 2 copies of a special edition NFT (ERC1155 type, which allows multiple copies).",
-          action: 'getNftBalance',
-          rawNfts: []
+          text: "Let me check my NFT quantities. I'll tell you exactly what I have.",
+          action: 'getNftBalance'
+        }
+      }
+    ],
+    [
+      {
+        user: 'user',
+        content: { text: 'Tell me about your NFTs' }
+      },
+      {
+        user: 'agent',
+        content: {
+          text: "I'll give you an overview of all my NFT holdings.",
+          action: 'getNftBalance'
         }
       }
     ]
