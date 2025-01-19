@@ -1,0 +1,380 @@
+# Ensurance Agents
+
+## Introduction
+This is a fork of ElizaOS the ai agent operating system. We are using it to build ensurance agents to ensure the stocks and flows of natural capital.
+
+We are customizing ElizaOS as needed for our use case but aim to stay up to date with the upstream. We aim to use the existing ElizaOS patterns to be maximally compatible with new versions of ElizaOS.
+
+This document is a guide but not hard and fast rules.
+
+## Overview
+
+ElizaOS is a multi-agent simulation framework with:
+
+### Key Features
+- Multi-Agent Architecture: Deploy multiple unique AI personalities
+- Character System: Create diverse agents with characterfiles
+- Memory Management: RAG system for long-term memory and context
+- Platform Integration: Discord, Twitter, Telegram support
+
+### Technical Capabilities
+- Media Processing: PDF, audio, video, image analysis
+- Model Support: Local and cloud-based inference
+- TypeScript Implementation: Modular and extensible design
+- Plugin System: Customizable functionality
+
+Common Use Cases:
+- AI Assistants: Support, moderation, personal help
+- Social Media: Content creation, engagement, branding
+- Knowledge Work: Research, analysis, documentation
+- Interactive Agents: Education, entertainment, roleplay
+
+# Character Files
+
+Character files (.json) define AI personalities with:
+
+- Core identity: name, bio, lore, knowledge base
+- Model settings: provider, clients (discord/direct/etc)
+- Interaction style: message examples, post examples, topics
+- Configuration: voice settings, model settings, templates
+
+Basic structure:
+```json
+{
+    "name": "character_name",
+    "modelProvider": "anthropic/openai/etc",
+    "clients": ["discord", "direct"],
+    "bio": ["Character background statements"],
+    "lore": ["Character storyline elements"],
+    "knowledge": ["Facts for grounding responses"],
+    "messageExamples": [
+        // Sample conversations
+    ],
+    "style": {
+        "all": ["style guidelines"],
+        "chat": ["chat guidelines"],
+        "post": ["post guidelines"]
+    }
+}
+```
+
+Key tips:
+- Break bio/lore into smaller chunks for variety
+- Include diverse interaction examples
+- Keep knowledge relevant and updated
+- Be specific about communication style
+
+# Agents
+
+Agents are autonomous components that handle interactions through:
+
+- Runtime Environment: Manages state, memory, and actions
+- Core Components:
+  - Clients: Platform interfaces (Discord, Telegram, etc)
+  - Providers: Service integrations (time, wallet, etc)
+  - Actions: Behavior definitions (follow, generate, process)
+  - Evaluators: Response assessment and goal management
+
+Basic structure:
+```typescript
+interface AgentRuntime {
+    agentId: string
+    character: Character
+    modelProvider: string
+    actions: Action[]
+    evaluators: Evaluator[]
+    providers: Provider[]
+    // Memory systems
+    messageManager: MemoryManager
+    descriptionManager: MemoryManager
+    loreManager: MemoryManager
+}
+```
+
+Key features:
+- Multiple memory systems for different contexts
+- State management for coherent interactions
+- Extensible through custom actions and providers
+- Built-in evaluation system for responses
+
+# Providers
+
+Providers inject dynamic context and real-time information into agent interactions:
+
+- Time Provider: Adds temporal context
+- Facts Provider: Maintains conversation facts
+- Boredom Provider: Manages engagement levels
+
+Basic structure:
+```typescript
+interface Provider {
+    get: (
+        runtime: IAgentRuntime,
+        message: Memory,
+        state?: State
+    ) => Promise<string>
+}
+```
+
+Key features:
+- Dynamic contextual information
+- Integration with agent runtime
+- Formatted data for conversations
+- Built-in caching and error handling
+
+Best practices:
+- Implement robust caching
+- Handle errors gracefully
+- Validate input/output data
+- Use appropriate security measures
+
+# Actions
+
+Actions define how agents respond to and interact with messages:
+
+- Built-in Actions:
+  - CONTINUE: Maintains conversation flow
+  - IGNORE: Gracefully disengages
+  - FOLLOW_ROOM: Actively participates in chats
+  - TAKE_ORDER: Processes trading/purchase orders
+
+Basic structure:
+```typescript
+interface Action {
+    name: string
+    similes: string[]
+    description: string
+    validate: (runtime: IAgentRuntime, message: Memory) => Promise<boolean>
+    handler: (runtime: IAgentRuntime, message: Memory, state?: State) => Promise<void>
+    examples: ActionExample[][]
+    suppressInitialMessage?: boolean
+}
+```
+
+Key features:
+- Unique identifiers and alternative names
+- Validation and handling logic
+- Example usage patterns
+- External system integration
+
+Best practices:
+- Single responsibility per action
+- Robust validation and error handling
+- Clear success criteria
+- Comprehensive example coverage
+
+# Evaluators
+
+Evaluators assess responses and extract information from conversations:
+
+- Built-in Evaluators:
+  - Fact Evaluator: Extracts and stores factual information
+  - Goal Evaluator: Tracks conversation goals and objectives
+
+Basic structure:
+```typescript
+interface Evaluator {
+    name: string
+    similes: string[]
+    description: string
+    validate: (runtime: IAgentRuntime, message: Memory) => Promise<boolean>
+    handler: (runtime: IAgentRuntime, message: Memory, state?: State) => Promise<any>
+    examples: EvaluatorExample[]
+}
+```
+
+Key features:
+- Long-term memory building
+- Goal progress tracking
+- Fact extraction and insights
+- Contextual awareness maintenance
+
+Best practices:
+- Validate facts before storage
+- Define clear, measurable objectives
+- Handle errors gracefully
+- Maintain state consistency
+
+# Packages
+
+Packages and their purposes:
+
+- Core Package: Framework fundamentals and shared functionality
+- Agent Package: Runtime environment and lifecycle management
+- Database Adapters: Storage backends (PostgreSQL, SQLite)
+- Client Packages: Platform integrations (Discord, Telegram)
+- Plugin System: Extension modules for additional features
+
+Basic installation:
+```bash
+# Core functionality
+pnpm add @elizaos/core
+
+# Database adapters
+pnpm add @elizaos/adapter-postgres
+pnpm add @elizaos/adapter-sqlite
+
+# Client integrations
+pnpm add @elizaos/client-discord
+pnpm add @elizaos/client-telegram
+```
+
+Key features:
+- Modular architecture
+- Flexible storage options
+- Multiple platform support
+- Extensible plugin system
+
+# Core
+
+The Core Package (@elizaos/core) provides fundamental building blocks:
+
+- Key Components:
+  - AgentRuntime: Central orchestrator for all components
+  - Memory System: Persistent storage with semantic search
+  - Context System: State and template management
+  - Action System: Behavior definitions and handlers
+  - Evaluation System: Response assessment
+  - Service Architecture: Extensible service infrastructure
+
+Basic setup:
+```typescript
+const runtime = new AgentRuntime({
+    databaseAdapter,
+    token,
+    modelProvider: ModelProviderName.OPENAI,
+    character,
+    plugins: [bootstrapPlugin],
+    providers: [],
+    actions: [],
+    services: []
+})
+```
+
+Best practices:
+- Use unique flags for important memories
+- Implement proper error handling
+- Cache embeddings when possible
+- Clean up old memories periodically
+
+# Clients
+
+Client packages enable platform integrations:
+
+- Available Clients:
+  - Discord: Full bot integration with voice support
+  - Twitter: Bot and interaction handling
+  - Telegram: Bot integration and messaging
+  - Direct: REST API for custom integrations
+  - Auto: Automated trading and interactions
+
+Basic setup:
+```typescript
+// Discord example
+const client = await DiscordClientInterface.start(runtime)
+
+// Configuration in .env
+DISCORD_APPLICATION_ID = your_app_id
+DISCORD_API_TOKEN = your_bot_token
+```
+
+Common features:
+- Standard message handling
+- Media processing
+- Error handling
+- Rate limiting
+
+Best practices:
+- Store credentials securely
+- Implement token refresh
+- Handle rate limits with backoff
+- Validate media before processing
+
+# Agent Package
+
+The Agent Package (@elizaos/agent) handles high-level orchestration:
+
+- Key Responsibilities:
+  - Character and plugin loading
+  - Runtime initialization
+  - Database adapter selection
+  - Client coordination
+  - Token management
+
+Basic setup:
+```typescript
+import { startAgents, loadCharacters } from "@elizaos/agent"
+
+// Load characters
+const characters = await loadCharacters(args.characters)
+
+// Start agent system
+await startAgents()
+```
+
+Token configuration:
+```bash
+# Character-specific env vars
+CHARACTER.YOUR_CHARACTER_NAME.OPENAI_API_KEY=sk-...
+
+# Or in character settings
+{
+    "settings": {
+        "secrets": {
+            "OPENAI_API_KEY": "sk-..."
+        }
+    }
+}
+```
+
+Best practices:
+- Handle missing character files gracefully
+- Manage plugin loading errors
+- Use appropriate database adapters
+- Follow token hierarchy (character env -> settings -> global env)
+
+# Plugins
+
+Plugins extend core functionality with modular features:
+
+Basic structure:
+```typescript
+interface Plugin {
+    name: string
+    description: string
+    actions?: Action[]
+    evaluators?: Evaluator[]
+    providers?: Provider[]
+    services?: Service[]
+}
+```
+
+Available plugins:
+- Bootstrap: Essential baseline functionality (continue, follow, ignore)
+- Image Generation: AI image creation capabilities
+- Node: Core Node.js services (browser, PDF, speech)
+- Solana: Blockchain functionality and trust scoring
+- Coinbase: Payment and transaction management
+- TEE: Trusted execution environment support
+- Webhook: Event handling and notifications
+- Fuel: Blockchain interface for Fuel Ignition
+
+Installation:
+```typescript
+import { bootstrapPlugin } from "@eliza/plugin-bootstrap"
+import { imageGenerationPlugin } from "@eliza/plugin-image-generation"
+
+const character = {
+    plugins: [bootstrapPlugin, imageGenerationPlugin]
+}
+```
+
+Best practices:
+- Keep plugins focused on specific functionality
+- Document dependencies clearly
+- Implement robust error handling
+- Include comprehensive tests
+- Provide clear usage examples
+
+
+
