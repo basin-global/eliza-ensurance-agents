@@ -38,6 +38,45 @@ Character files (.json) define AI personalities with:
 - Interaction style: message examples, post examples, topics
 - Configuration: voice settings, model settings, templates
 
+### Templates Configuration
+Available templates for customizing prompts and interactions:
+
+- Message Templates:
+  - `messageHandlerTemplate`: General message handling
+  - `shouldRespondTemplate`: Response decision making
+  - `continueMessageHandlerTemplate`: Conversation continuation
+  - `evaluationTemplate`: Response evaluation
+
+- Platform-Specific Templates:
+  - Twitter: `twitterPostTemplate`, `twitterSearchTemplate`, `twitterMessageHandlerTemplate`
+  - Telegram: `telegramMessageHandlerTemplate`, `telegramShouldRespondTemplate`
+  - Discord: `discordVoiceHandlerTemplate`, `discordMessageHandlerTemplate`
+
+Example Twitter Post Template:
+```typescript
+templates: {
+    twitterPostTemplate: `
+# Areas of Expertise
+{{knowledge}}
+
+# About {{agentName}} (@{{twitterUserName}}):
+{{bio}}
+{{lore}}
+{{topics}}
+
+{{providers}}
+
+{{characterPostExamples}}
+
+{{postDirections}}
+
+# Task: Generate a post in the voice and style of {{agentName}}
+Write a 1-3 sentence post that is {{adjective}} about {{topic}}.
+Brief, concise statements only. Character count < {{maxTweetLength}}.
+Use \\n\\n between statements.`
+}
+```
+
 Basic structure:
 ```json
 {
