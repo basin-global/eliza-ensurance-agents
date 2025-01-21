@@ -31,7 +31,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 import yargs from "yargs";
 import { webSearchPlugin } from "@elizaos/plugin-web-search";
-import { onchainPlugin } from '@elizaos/plugin-onchain-agent-suite';
+import { onchainPlugin } from '@elizaos/plugin-ensurance';
 
 const __filename = fileURLToPath(import.meta.url); // get the resolved path to the file
 const __dirname = path.dirname(__filename); // get the name of the directory
